@@ -16,12 +16,14 @@ deebo.methods = function() {
             uniSep: "Z_",
             verticalRest: 0,
             horizRest: 0,
-            rowBuffer: 50,
+            aboveHgt: 0,
+            belowHgt: 0,
+            useRowWid: "",
+            rowNumbers: true,
             lastElRowIndex: 0,
             currColumnEdit: null,
             linkCell: null,
             linkCells: [],
-            changedIds: [],
             columnNames: [],
             isScrolling: false,
             showCharts: false,
@@ -135,6 +137,8 @@ deebo.methods = function() {
                     }
                 }
                 document.getElementById("dataTableHeaders").style.height = useHgt + "px"
+                if(deebo.methods.rowNumbers)
+                    document.getElementById("rowNumHeader").style.height = useHgt + "px"
                 deebo.methods.setRowSelChecksPlacement()
             },
 
@@ -155,11 +159,13 @@ deebo.methods = function() {
                             const okNwNam = deebo.methods.stripSpecChars(prop)
                             for(i; i < dlen; i++){
                                 if(data[i] && typeof data[i] === "object"){
-                                    try{
-                                        Object.defineProperty(data[i], okNwNam,
-                                        Object.getOwnPropertyDescriptor(data[i], prop));
-                                        delete data[i][prop]
-                                    }catch(e){}
+                                    const desc = Object.getOwnPropertyDescriptor(data[i], prop)
+                                    if(desc){
+                                        try{
+                                            Object.defineProperty(data[i], okNwNam, desc);
+                                            delete data[i][prop]
+                                        }catch(e){}
+                                    }
                                 }
                             }
                             i = 0;
@@ -311,6 +317,50 @@ deebo.methods = function() {
                         chk.classList.add("hide")
                     }
                 }
+                if(deebo.methods.rowNumbers)
+                    deebo.methods.setRowNumbers()
+            },
+
+            
+            setRowNumbers: function() {
+                const rows = document.getElementsByClassName("data-table-row")
+                const rbod = document.getElementById("rowNumBody")
+                let r = 0
+                let priors = {}
+                const nlen = rbod.children.length
+                const defNum = parseInt(dataTableService.methods.defltRHgt.replace(/[ ]?px/g, ""))
+                for(r; r < nlen; r++){
+                    const rn = rbod.children[r]
+                    if(rn && rn.classList.contains("num-row")){
+                        const hgt = Math.ceil(rn.getBoundingClientRect().height)
+                        if(hgt !== defNum)
+                            priors[rn.id] = hgt
+                    }
+                }
+                const rlen = rows.length
+                if(rbod && rlen){
+                    rbod.innerHTML = ""
+                    let n = (deebo.methods.lastElRowIndex + 1) - rlen
+                    for(n; n <= deebo.methods.lastElRowIndex; n++){
+                        const num = (n + 1)
+                        const rn = document.createElement("div")
+                        const rnin = document.createElement("div")
+                        rn.className = "flex-center"
+                        rn.classList.add("num-row")
+                        const phgt = priors["rn" + num]
+                        rn.style.height = phgt ? (phgt+"px") : dataTableService.methods.defltRHgt;
+                        rn.id = "rn" + num
+                        rnin.className = "small-text"
+                        rnin.textContent = num
+                        rn.appendChild(rnin)
+                        rbod.appendChild(rn)
+                    }
+                    const r1 = document.getElementById("dataTableRow" + rows[0]?.getAttribute("data-index"))
+                    if(r1){
+                        const useCalc = -(dataTableService.methods.tblTop - r1.getBoundingClientRect().top)
+                        rbod.style.marginTop = Math.min(useCalc, 0) +  "px"
+                    }
+                }
             },
 
             initCheckTop: function() {
@@ -342,6 +392,19 @@ deebo.methods = function() {
                 }
             },
 
+            handleFilSDataStr: function(trdiv) {
+                const par = trdiv.parentElement
+                let filsDiv = document.getElementById("filSDiv")
+                if(!filsDiv){
+                    filsDiv = document.createElement("div")
+                    filsDiv.id = "filSDiv"
+                    filsDiv.className = "inline"
+                    filsDiv.className += " v-mid"
+                    par.appendChild(filsDiv)
+                }
+                filsDiv.innerHTML = deebo.methods.getAllFilSrtInfo()
+            },
+
             toggleSelectedRows: function(event, forceUnsel) {
                 dataTableService.methods.displayOnlySelRows = !dataTableService.methods.displayOnlySelRows
                 if(forceUnsel)
@@ -365,7 +428,11 @@ deebo.methods = function() {
                     deebo.methods.renderCurrData()
                     document.getElementById("btnReset").disabled = false
                     const dct = dataTableService.methods.currFilData.length.toLocaleString(undefined, { maximumFractionDigits: 0 })
-                    document.getElementById("totalRows").textContent = dct
+                    const tRows = document.getElementById("totalRows")
+                    if(tRows){
+                        tRows.textContent = dct
+                        deebo.methods.handleFilSDataStr(tRows)
+                    }
                     deebo.methods.setExportCount(dct)
                 } else {
                     const col = document.getElementsByClassName("col-header")[0]?.id.replace(/columnHeader/g, "")//just fil by 1st col
@@ -463,14 +530,14 @@ deebo.methods = function() {
                     deebo.methods.toggleSelectedRows(null, true)
             },
 
-            updateUiColCellTheme: function(cssProp, val) {
+            updateUiColCellTheme: function(cssProp, val, forceCol) {
                 let i = 0
                 let tempVal;
                 if(val && typeof val === "object" && val.value && val.name)
                     tempVal = val.value;
-                const els = document.getElementsByClassName("data-cell-" + deebo.methods.currColumnEdit)
+                const els = document.getElementsByClassName("data-cell-" + (deebo.methods.currColumnEdit || forceCol))
                 const len = els.length
-                const prop = deebo.methods.replaceUniSep(deebo.methods.currColumnEdit)
+                const prop = deebo.methods.replaceUniSep((deebo.methods.currColumnEdit || forceCol))
                 if(prop && dataTableService.methods.dataFilSrtTracker[prop]){
                     const backToCss = { 
                         width: "width", color: "color", background: "background", borderBottom: "border-bottom",
@@ -506,6 +573,7 @@ deebo.methods = function() {
                         head.style.width = val;
                     const allColW = deebo.methods.getAllColWidth(colLen)
                     deebo.methods.setDataRowWidthsOnMinimize(allColW)
+                    deebo.methods.setRowSelChecksPlacement()
                     deebo.methods.testHideMinBtn()
                 }
             },
@@ -573,33 +641,61 @@ deebo.methods = function() {
             },
 
             setLastRowIndex: function() {
-                deebo.methods.lastElRowIndex = (document.getElementsByClassName("data-table-row").length - 1)
+                const realMax = dataTableService.methods.currFilData.length - 1
+                const defNum = parseInt(dataTableService.methods.defltRHgt.replace(/[ ]?px/g, ""))
+                const wannabeMax = (document.getElementsByClassName("data-table-row").length - 1) + Math.floor(Math.max(0, deebo.methods.aboveHgt)/defNum)
+                deebo.methods.lastElRowIndex = Math.min(wannabeMax, realMax)
                 return deebo.methods.lastElRowIndex;
             },
 
-            getTallestCellInRow: function(kids) {
-                let i = 0
-                let hgts = []
-                const len = kids.length
-                for(i; i < len; i++)
-                    hgts.push(kids[i].scrollHeight)
-                const srt = hgts.sort( function(a, b) { return a > b ? -1 : 1 })
-                return Math.ceil(srt[0] + 1);
+            dblClickCol: function(elCol) {
+                if(elCol){
+                    const prop = deebo.methods.replaceUniSep(elCol)
+                    if(dataTableService.methods.dataFilSrtTracker[prop]){
+                        let i = 0
+                        let wids = []
+                        let useWid = 50
+                        const els = document.getElementsByClassName("data-cell-" + elCol)
+                        const nw = els[0]?.getBoundingClientRect().width || 0
+                        const len = els.length
+                        for(i; i < len; i++)
+                            wids.push(els[i].scrollWidth)
+                        useWid =wids.sort()[(len-1)]
+                        if(useWid && useWid > nw){
+                            const cswid = Math.ceil(useWid+1) + "px"
+                            deebo.methods.updateUiColCellTheme("width", cswid, elCol) 
+                            document.getElementById("columnHeader" + elCol).style.width = cswid
+                        }
+                    }
+                }
             },
 
-            buildInitUiDataTable: function(data, color1, color2, blockEditing) {//will be array of objects
+            buildInitUiDataTable: function(data, color1, color2, blockEditing, hideRowNumbers) {//will be array of objects
                 const cols = Object.keys(data[0])         
                 const head = document.getElementById("dataTableHeaders")
                 const tbody = document.getElementById("dataTableBody")
                 if(blockEditing)
                     deebo.methods.editable = false;
                 try{
-                    let i = 0; let n = 0; let init = 20;
+                    let i = 0; let n = 0;
                     const len = data.length;
                     const colLen = cols.length
                     const wid = window.innerWidth;
-                    document.getElementById("dataTableBody").style.height = deebo.methods.dTblHeight + "px"
+                    const rns = document.getElementsByClassName("row-numbers")[0]
+                    if(rns){
+                        if(hideRowNumbers){
+                            deebo.methods.rowNumbers = false
+                            rns.parentElement.removeChild(rns)
+                        } else {
+                            document.getElementById("dataTableChecks").classList.add("dt-checks")
+                            document.getElementById("dataTable").classList.add("inline-table")
+                            document.getElementById("rowNumHeader").nextElementSibling.style.height = deebo.methods.dTblHeight + "px"
+                        }
+                    }
+                    tbody.style.height = deebo.methods.dTblHeight + "px";
                     const maxCols = deebo.methods.setMaxCols(wid)
+                    const defNum = parseInt(dataTableService.methods.defltRHgt.replace(/[ ]?px/g, ""))
+                    const init = Math.max(deebo.methods.dTblHeight/defNum);
                     deebo.methods.useColWid = Math.ceil((tbody.getBoundingClientRect().width-16)/Math.min(colLen, maxCols)) + "px"
                     let canFreeze
                     for(i; i < colLen; i++){
@@ -610,108 +706,125 @@ deebo.methods = function() {
                             deebo.methods.visibleCols.push(col)
                         deebo.methods.columnNames.push(col)
                     }
-                    deebo.methods.setColHeaderHgt()
-                    const addCell = function(text, prop, row, indx) {
+                    const addCell = function(text, prop, row, indx, vis) {
                         const cell = document.createElement("div")
                         const elProp = prop?.replace(/ /g, deebo.methods.uniSep) 
-                        cell.style.width = deebo.methods.useColWid
                         cell.className = "data-cell"
                         cell.className += (" data-cell-" + (elProp || "data"))
-                        const head = document.getElementById("columnHeader" + elProp)
-                        const filInp = document.getElementById("filter" + (elProp || "data"))
-                        const notNum = (filInp && (filInp.getAttribute("type") != "number" || /(year|yr|fy)/g.test((prop || "data").toLocaleLowerCase()))) ? true : false
-                        if(head && head.classList.contains("col-item-freeze"))
-                            cell.classList.add("col-item-freeze")
-                        if(filInp && filInp.getAttribute("type") === "number")
-                            cell.classList.add("data-cell-riiight")
-                        let useTxt; let sym;
-                        if(dataTableService.methods.dataFilSrtTracker && dataTableService.methods.dataFilSrtTracker[prop]){
-                            sym = dataTableService.methods.dataFilSrtTracker[prop]["colCellSymbol"]
-                            useTxt = deebo.methods.figureCellText(text, notNum, sym)
-                        } else {
-                            useTxt = deebo.methods.figureCellText(text, notNum)
+                        if(vis){
+                            cell.style.width = deebo.methods.useColWid
+                            cell.style.height = dataTableService.methods.defltRHgt
+                            const head = document.getElementById("columnHeader" + elProp)
+                            const filInp = document.getElementById("filter" + (elProp || "data"))
+                            const notNum = (filInp && (filInp.getAttribute("type") != "number" || /(year|yr|fy)/g.test((prop || "data").toLocaleLowerCase()))) ? true : false
+                            if(head && head.classList.contains("col-item-freeze"))
+                                cell.classList.add("col-item-freeze")
+                            if(filInp && filInp.getAttribute("type") === "number")
+                                cell.classList.add("data-cell-riiight")
+                            let useTxt; let sym;
+                            if(dataTableService.methods.dataFilSrtTracker && dataTableService.methods.dataFilSrtTracker[prop]){
+                                sym = dataTableService.methods.dataFilSrtTracker[prop]["colCellSymbol"]
+                                useTxt = deebo.methods.figureCellText(text, notNum, sym)
+                            } else {
+                                useTxt = deebo.methods.figureCellText(text, notNum)
+                            }
+                            if(useTxt.prop === "textContent"){
+                                cell.textContent = useTxt.value
+                                if(deebo.methods.editable)
+                                    cell.setAttribute("contenteditable", "true")
+                            } else {
+                                cell.innerHTML = useTxt.value
+                                if(deebo.methods.editable && !/<img/g.test(useTxt.value))
+                                    cell.setAttribute("contenteditable", "true")
+                            }
+                            if(sym){
+                                let symbolCls = ["$","€","£","¥","₣","₹"].indexOf(sym) > -1 ? "has-symbol-b" : "has-symbol";
+                                cell.classList.add(symbolCls)
+                                cell.setAttribute("data-symbol", sym)
+                            }
+                            if(useTxt.ancs && useTxt.ancs.length)
+                                deebo.methods.giveCellAncOptions(indx, elProp, useTxt.ancs)
+                            if(window.innerWidth >= deebo.methods.mouseEventBreak){
+                                cell.addEventListener("mousemove", tblDragEvents.methods.checkItemBorderCursor)
+                                cell.addEventListener("mousemove", tblDragEvents.methods.handleCellSizeAdjust)
+                                cell.addEventListener("mousedown", tblDragEvents.methods.handleCellSizeAdjust)
+                            }
+                            cell.addEventListener("focus", deebo.methods.setCellToEdit);
+                            cell.addEventListener("blur", deebo.methods.execCellEdit);
+                            cell.className += " data-visible";
                         }
-                        if(useTxt.prop === "textContent"){
-                            cell.textContent = useTxt.value
-                            if(deebo.methods.editable)
-                                cell.setAttribute("contenteditable", "true")
-                        } else {
-                            cell.innerHTML = useTxt.value
-                            if(deebo.methods.editable && !/<img/g.test(useTxt.value))
-                                cell.setAttribute("contenteditable", "true")
-                        }
-                        if(sym){
-                            let symbolCls = ["$","€","£","¥","₣","₹"].indexOf(sym) > -1 ? "has-symbol-b" : "has-symbol";
-                            cell.classList.add(symbolCls)
-                            cell.setAttribute("data-symbol", sym)
-                        }
-                        if(useTxt.ancs && useTxt.ancs.length)
-                            deebo.methods.giveCellAncOptions(indx, elProp, useTxt.ancs)
-                        if(window.innerWidth >= deebo.methods.mouseEventBreak){
-                            cell.addEventListener("mousemove", tblDragEvents.methods.checkItemBorderCursor)
-                            cell.addEventListener("mousemove", tblDragEvents.methods.handleCellSizeAdjust)
-                            cell.addEventListener("mousedown", tblDragEvents.methods.handleCellSizeAdjust)
-                        }
-                        cell.addEventListener("focus", deebo.methods.setCellToEdit);
-                        cell.addEventListener("blur", deebo.methods.execCellEdit);
                         row.appendChild(cell)
                         if(row && prop && row.children.length === 1)
                             deebo.methods.createSelectRowCheck(row.getAttribute("data-index"))
                     }
                     const limit = Math.min(init, len)
-                    const horizLim = Math.min(maxCols, colLen)
-                    const useRowWid = deebo.methods.getAllColWidth(colLen) + "px"
+                    const horizLim = Math.min((maxCols+1), colLen)
+                    const blw = document.getElementById("belowArea")
+                    deebo.methods.useRowWid = deebo.methods.getAllColWidth(colLen) + "px"
                     for(n; n < limit; n++){
                         const row = document.createElement("div")
                         row.id = "dataTableRow" + n
                         row.className = "data-table-row"
                         row.setAttribute("data-index", n)
-                        tbody.appendChild(row)
+                        blw.insertAdjacentElement("beforebegin", row)
+                        row.style.width = deebo.methods.useRowWid
+                        row.style.height = dataTableService.methods.defltRHgt
                         let k = 0
-                        for(k; k < horizLim; k++)
-                            addCell(data[n][cols[k]], cols[k], row, n)
-                        row.style.width = useRowWid
+                        for(k; k < colLen; k++)
+                            addCell(data[n][cols[k]], cols[k], row, n, (k <= horizLim))
+                        dataTableService.methods.currMapping[n] = n
                     }
                     deebo.methods.setLastRowIndex()
                     deebo.methods.blockEventsInCells()
-                    setTimeout(deebo.methods.setDataRowHgts)
                     deebo.methods.toggleNonInitCtrlBtns(true)
                     document.getElementById("tableFooter").className = "data-table-footer"
                     deebo.methods.setUpPaginatorOnTblLoad()
                     const dct = len.toLocaleString(undefined, { maximumFractionDigits: 0 })
-                    document.getElementById("totalRows").textContent = dct
+                    const tRows = document.getElementById("totalRows")
+                    if(tRows){
+                        tRows.textContent = dct
+                        deebo.methods.handleFilSDataStr(tRows)
+                    }
                     deebo.methods.setExportCount(dct)
                     tbody.addEventListener("scroll", deebo.methods.handleScroll);
                     tbody.addEventListener("scrollend", deebo.methods.handleScrollEnd);
+                    window.addEventListener("resize", dataTableService.methods.setTableBounds)
+                    window.addEventListener("mouseup", deebo.methods.handleScrlBarDrag)
                     deebo.methods.handleTheme(color1, color2)
                     deebo.methods.handleColAnyDDFilters(data, cols)
                     if(len)
                         document.getElementById("btnCharts").disabled = false
                     setTimeout( function() { 
                         deebo.methods.testHideMinBtn()
-                        dataTableService.methods.setTblVertBounds()//critical
-                        dataTableService.methods.setTblHorizBounds()
+                        deebo.methods.setColHeaderHgt()
+                        deebo.methods.setRowSelChecksPlacement()
+                        dataTableService.methods.setTableBounds()
                     })
-                    setTimeout( () => {
+                    setTimeout( function() {
                         if(len > init){
+                            let total = 0
                             let z = deebo.methods.lastElRowIndex + 1
-                            const phund = (z+deebo.methods.rowBuffer)
-                            const goTo = Math.min(len, phund)
-                            for(z; z < goTo; z++){
-                                const row = document.createElement("div")
-                                row.id = "dataTableRow" + z
-                                row.className = "data-table-row"
-                                row.setAttribute("data-index", z)
-                                tbody.appendChild(row)
-                                row.style.width = useRowWid
-                                row.style.height = "78px"
+                            for(z; z < len; z++){
+                                total += 1
+                                dataTableService.methods.currMapping[z] = z
                             }
-                            deebo.methods.setLastRowIndex()
+                            deebo.methods.belowHgt = total*defNum
+                            blw.style.height = deebo.methods.belowHgt + "px"
                         }
-                        dataTableService.methods.setTblVertBounds()//critical
-                        dataTableService.methods.setTblHorizBounds()
+                        dataTableService.methods.setTableBounds()
+                        deebo.methods.setIdealColWidth(cols, horizLim)
+                        deebo.methods.setColsOnVisScreen()
                     }, 250)
                 } catch(e) { }                
+            },
+
+            setIdealColWidth: function(cols, horizLim) {
+                let o = 0
+                const useLen = horizLim || cols?.length || 0
+                for(o; o < useLen; o++){
+                    if(!dataTableService.methods.dataFilSrtTracker[cols[o]].minimize)
+                        deebo.methods.dblClickCol(cols[o]?.replace(/ /g, deebo.methods.uniSep))
+                }
             },
 
             handleColAnyDDFilters: function(data, cols) {
@@ -925,42 +1038,42 @@ deebo.methods = function() {
             },
 
             handleTheme: function(co1, co2) {
-                let rule1; let rule1a; let rule2; let rule3; let rule4; let rule5; let rule6;
-                if(co1){
-                    rule1 = ".col-header span, .col-header sup, .col-header button .material-icons," + 
-                    ".paginator-half-wid{color: "+co1+"}";
-                    rule1a = ".col-header select, .col-header input:not(input[type=file]),";
-                }
-                if(co2){
-                    rule2 = ".col-header, .data-table-footer, .skip-to-options, .btn-fil-comp{background: "+co2+"}"
-                    const tblbxSh = "0 -1px 3px 1px ";
-                    const tblFbxSh = "0 1px 3px -3px ";
-                    if(dataTableService.methods.mainDataLen){
-                        rule2 = ".col-header, .skip-to-options, .btn-fil-comp{background: "+co2+"}"
-                        rule3 = ".data-table{ box-shadow: "+tblbxSh + co2+"; -webkit-box-shadow: "+tblbxSh + co2+"; -moz-box-shadow: "+tblbxSh + co2+"}"
-                        rule6 = ".data-table-footer{background: "+co2+"; box-shadow: "+tblFbxSh + co2+"; -webkit-box-shadow: "+tblFbxSh + co2+"; -moz-box-shadow: "+tblFbxSh + co2+"}";
+                try{
+                    let rule1; let rule1a; let rule2; let rule3; let rule5; let rule6;
+                    if(co1){
+                        rule1 = ".col-header span, .col-header sup, .col-header button .material-icons," + 
+                        ".paginator-half-wid{color: "+co1+"}";
+                        rule1a = ".col-header select, .col-header input:not(input[type=file]), #skipTo{box-shadow:0 0 1px 1px "+co1+";" +
+                        "-webkit-box-shadow:0 0 1px 1px "+co1+"}";
                     }
-                    rule4 = ".bot-bord-cell{ border-bottom: 1px solid "+co2+";}"
-                    rule5 = ".data-cell{ border-bottom: 1px solid "+co2+"; border-right: 1px solid "+co2+"}"
-                }
-                if(rule1 || rule1a || rule2 || rule3 || rule4 || rule5 || rule6){
-                    const el = document.createElement("style")
-                    document.head.appendChild(el)
-                    if(rule1)
-                        el.sheet.insertRule(rule1)
-                    if(rule1a)
-                        el.sheet.insertRule(rule1a)
-                    if(rule2)
-                        el.sheet.insertRule(rule2)
-                    if(rule3)
-                        el.sheet.insertRule(rule3)
-                    if(rule4)
-                        el.sheet.insertRule(rule4)
-                    if(rule5)
-                        el.sheet.insertRule(rule5)
-                    if(rule6)
-                        el.sheet.insertRule(rule6)
-                }
+                    if(co2){
+                        rule2 = ".col-header, .data-table-footer, .btn-fil-comp{background: "+co2+"}"
+                        const tblbxSh = "0 -1px 3px 1px ";
+                        const tblFbxSh = "0 1px 3px -3px ";
+                        if(dataTableService.methods.mainDataLen){
+                            rule2 = ".col-header, .btn-fil-comp{background: "+co2+"}"
+                            rule3 = ".data-table{ box-shadow: "+tblbxSh + co2+"; -webkit-box-shadow: "+tblbxSh + co2+"; -moz-box-shadow: "+tblbxSh + co2+"}"
+                            rule6 = ".data-table-footer{background: "+co2+"; box-shadow: "+tblFbxSh + co2+"; -webkit-box-shadow: "+tblFbxSh + co2+"; -moz-box-shadow: "+tblFbxSh + co2+"}";
+                        }
+                        rule5 = ".data-cell{ border-bottom: 1px solid "+co2+"; border-right: 1px solid "+co2+"}"
+                    }
+                    if(rule1 || rule1a || rule2 || rule3 || rule5 || rule6){
+                        const el = document.createElement("style")
+                        document.head.appendChild(el)
+                        if(rule1)
+                            el.sheet.insertRule(rule1)
+                        if(rule1a)
+                            el.sheet.insertRule(rule1a)
+                        if(rule2)
+                            el.sheet.insertRule(rule2)
+                        if(rule3)
+                            el.sheet.insertRule(rule3)
+                        if(rule5)
+                            el.sheet.insertRule(rule5)
+                        if(rule6)
+                            el.sheet.insertRule(rule6)
+                    }
+                }catch(e){}
             },
 
             setUpPaginatorOnTblLoad: function() {
@@ -1088,89 +1201,98 @@ deebo.methods = function() {
                 dataTableService.methods.visibleCols = vCols.filter( function(v) { return true })
             },
 
+            handleScrlBarDrag: function(event) {
+                if(deebo.methods.showCharts)
+                    return;
+                if(event && event.target && event.target.id === "dataTableBody"){
+                    requestAnimationFrame( function() {
+                        const dtb = document.getElementById("dataTableBody")
+                        if(dtb){
+                            deebo.methods.execVertScroll(dtb.scrollTop)
+                            deebo.methods.execHorizScroll(dtb.scrollLeft)
+                            setTimeout(deebo.methods.blockEventsInCells, 100)
+                        }
+                    })
+                }
+            },
+
             handleScroll: function(event) {
-                const head = document.getElementById("dataTableHeaders")
+                if(deebo.methods.showCharts)
+                    return;
                 const left = event.target.scrollLeft
                 const top = event.target.scrollTop
                 /*horiz scroll*/
-                if(deebo.methods.showCharts)
-                    return;
-                if(left !== deebo.methods.horizRest){
+                window.requestAnimationFrame( function() { deebo.methods.execHorizScroll(left) })
+                /*horiz scroll*/
+                /*vert scroll*/
+                if(top === deebo.methods.verticalRest)
+                    return deebo.methods.setRowSelChecksPlacement(); 
+                window.requestAnimationFrame( function() { deebo.methods.execVertScroll(top) })               
+            },
+
+            execHorizScroll: function(left, reverse) {
+                if(reverse || left !== deebo.methods.horizRest){
+                    const head = document.getElementById("dataTableHeaders")
                     if(left > 0)
                         head.style.marginLeft = -left + "px"
                     else
                         head.style.removeProperty("margin-left")
-                    if(left > deebo.methods.horizRest){
-                        deebo.methods.execHorizScrollRight(dataTableService.methods.visibleCols)
-                    } else {//scrolling back left
-                        deebo.methods.execHorizScrollLeft(dataTableService.methods.visibleCols)
-                    }
+                    deebo.methods.setColsOnVisScreen()
+                    deebo.methods.execHorizBodyScroll()
                     deebo.methods.horizRest = left
                     deebo.methods.setColsOnVisScreen()
                 }
-                /*horiz scroll*/
-                /*vert scroll*/
-                if(top === deebo.methods.verticalRest)
-                    return;
+            },
+
+            scrollDir: "down",
+
+            execVertScroll: function(top) {
                 deebo.methods.isScrolling = true
-                if(top > deebo.methods.verticalRest){
+                if(top >= deebo.methods.verticalRest){
                     deebo.methods.execVertScrollDown(deebo.methods.columnNames, deebo.methods.columnNames.length)
                     deebo.methods.clearAboveFoldRows()
+                    deebo.methods.scrollDir = "down"
                 } else {//scrolling back up
                     deebo.methods.execVertScrollUp(deebo.methods.columnNames, deebo.methods.columnNames.length)
                     deebo.methods.clearBelowFoldRows()
+                    deebo.methods.scrollDir = "up"
                 }
                 deebo.methods.verticalRest = top
-                deebo.methods.checkLastRowAdded()
-                if(top%10 === 0)
-                    deebo.methods.setDataRowHgtsById()
+                if(deebo.methods.rowNumbers && top%2 === 0)
+                    deebo.methods.setRowNumbers()
                 /*vert scroll*/
-                deebo.methods.setRowSelChecksPlacement()
             },
 
             handleScrollEnd: function() {
-                setTimeout( () => { 
-                    deebo.methods.setDataRowHgtsById()
+                if(deebo.methods.showCharts)
+                    return;
+                deebo.methods.setRowSelChecksPlacement()
+                setTimeout( function() { 
                     deebo.methods.isScrolling = false
                     deebo.methods.setColsOnVisScreen()
-                    deebo.methods.setRowSelChecksPlacement() 
+                    setTimeout(deebo.methods.cleanUpPossibles)
+                    setTimeout(deebo.methods.blockEventsInCells, 100)
                 })
             },
 
-            checkLastRowAdded: function() {
-                const len = dataTableService.methods.currFilData.length
-                const els = document.getElementsByClassName("data-table-row")
-                const eLen = els.length
-                const last  = els[(eLen-1)]
-                if(last && eLen < (len - 1)){
-                    const bds = last.getBoundingClientRect()
-                    if(bds.top < (dataTableService.methods.tblBot + 500)){
-                        const tbody = document.getElementById("dataTableBody")
-                        const useRowWid = deebo.methods.getAllColWidth(document.getElementsByClassName("col-header").length - deebo.methods.getMiniColCount()) + "px";
-                        let z = deebo.methods.lastElRowIndex + 1
-                        const phund = (z+deebo.methods.rowBuffer)
-                        const goTo = Math.min(len, phund)
-                        for(z; z < goTo; z++){
-                            const index = deebo.methods.findObjIndxInData(dataTableService.methods.currFilData[z])
-                            const row = document.createElement("div")
-                            row.id = "dataTableRow" + index
-                            row.className = "data-table-row"
-                            row.setAttribute("data-index", index)
-                            tbody.appendChild(row)
-                            row.style.width = useRowWid
-                            row.style.height = "78px"
-                        }
-                        deebo.methods.setLastRowIndex()
-                    }
-                }
-            },
-
-            addCell: function(text, prop, row, indx) {
+            addCell: function(text, prop, row, indx, vis, b4) {
                 const cell = document.createElement("div")
                 const elProp = prop?.replace(/ /g, deebo.methods.uniSep)
-                cell.style.width = dataTableService.methods.dataFilSrtTracker[prop]?.colWidth || deebo.methods.useColWid
                 cell.className = "data-cell"
                 cell.className += (" data-cell-" + (elProp || "data"))
+                if(dataTableService.methods.dataFilSrtTracker[prop].minimize)
+                    cell.classList.add("col-header-minimized")
+                if(vis)
+                    deebo.methods.updateCell(cell, prop, elProp, text, indx)
+                if(b4)
+                    row.insertAdjacentElement("afterbegin", cell)
+                else
+                    row.appendChild(cell)
+                if(row && prop && row.children.length === 1)
+                    deebo.methods.createSelectRowCheck(row.getAttribute("data-index"))
+            },
+
+            updateCell: function(cell, prop, elProp, text, indx) {
                 const head = document.getElementById("columnHeader" + elProp)
                 const filInp = document.getElementById("filter" + (elProp || "data"))
                 const notNum = (filInp && (filInp.getAttribute("type") != "number" || /(year|yr|fy)/g.test((prop || "data").toLocaleLowerCase()))) ? true : false;
@@ -1185,6 +1307,8 @@ deebo.methods = function() {
                 if(filInp && filInp.getAttribute("type") === "number")
                     cell.classList.add("data-cell-riiight")
                 let useTxt; let sym;
+                cell.style.width = dataTableService.methods.dataFilSrtTracker[prop]?.colWidth || deebo.methods.useColWid
+                cell.style.height = dataTableService.methods.defltRHgt
                 if(dataTableService.methods.dataFilSrtTracker && dataTableService.methods.dataFilSrtTracker[prop]){
                     sym = dataTableService.methods.dataFilSrtTracker[prop]["colCellSymbol"]
                     useTxt = deebo.methods.figureCellText(text, notNum, dataTableService.methods.dataFilSrtTracker[prop]["colCellSymbol"])
@@ -1214,217 +1338,217 @@ deebo.methods = function() {
                 }
                 cell.addEventListener("focus", deebo.methods.setCellToEdit);
                 cell.addEventListener("blur", deebo.methods.execCellEdit);
-                cell.style.height = row.getBoundingClientRect().height + "px"
-                row.appendChild(cell)
-                if(row && prop && row.children.length === 1)
-                    deebo.methods.createSelectRowCheck(row.getAttribute("data-index"))
+                cell.classList.add("data-visible")
             },
 
-            getRowsByContentOrNo: function(hasContent) {
-                let i = 0
-                let rows = []
-                const els = document.getElementsByClassName("data-table-row")
-                const len = els.length
-                for(i; i < len; i++){
-                    const row = els[i]
+            execHorizBodyScroll: function() {
+                const allcols = deebo.methods.getAllColsAtRuntime(null);
+                let i = 0;
+                const clen = allcols.length
+                const rows = document.getElementsByClassName("data-table-row")
+                const rlen = rows.length
+                const lftPlus = deebo.methods.rowNumbers ? 75 : 0//ctrl+f "--row-num-width" in css
+                let positions = []
+                for(let p = (clen-1); p >= 0; p--){
+                    const col = allcols[p]
+                    const elcol = col?.replace(/ /g, deebo.methods.uniSep)
+                    const head = document.getElementById("columnHeader" + elcol)
+                    if(head){
+                        const bds = head.getBoundingClientRect()
+                        if(bds.left > dataTableService.methods.tblRight)
+                            continue
+                        const cell = document.querySelector("#dataTableRow0 .data-cell-" + elcol)
+                        if((dataTableService.methods.visibleCols.includes(col) || (bds.left >= (dataTableService.methods.tblLeft-lftPlus) && bds.right < (dataTableService.methods.tblRight+lftPlus)))){//visible
+                            positions.push({ col: col, vis: true })
+                        }
+                        if(cell && cell.classList.contains("data-visible") && !dataTableService.methods.visibleCols.includes(col) && !positions.find( function(p) {return p.col === col}))
+                            positions.push({ col: col, vis: false })
+                    }
+                }
+                const plen = positions.length
+                for(i; i < rlen; i++){
+                    const row = rows[i]
                     if(row){
-                        const kids = row.children.length
-                        if(hasContent){
-                            if(kids)
-                                rows.push(row.id)
-                        } else {
-                            if(!kids || kids === 0)
-                                rows.push(row.id)
-                        }
-                    }
-                }
-                return rows//string[]
-            },
-
-            getCellsThatExst: function(row) {
-                let i = 0
-                const cells = []
-                if(row){
-                    const kids = row.children
-                    const len = kids.length
-                    for(i; i < len; i++){
-                        const kid = kids[i]
-                        cells.push(deebo.methods.replaceUniSep(deebo.methods.getColFrmClsList(kid, "data-cell-")))
-                    }
-                }
-                return cells//[] of underlying col names
-            },
-
-            execHorizScrollRight: function(cols) {
-                let i = 0; let c = 0; let e = 0;
-                const rows = deebo.methods.getRowsByContentOrNo(true)//[] of row ids
-                const len = rows.length
-                const clen = cols.length
-                let colsToAdd = []
-                let colsToRem = []
-                const cellsExst = deebo.methods.getCellsThatExst(document.getElementById(rows[0]))
-                const eLen = cellsExst.length
-                if(eLen){
-                    for(c; c < clen; c++){//add
-                        const col = cols[c]
-                        if(cellsExst.indexOf(col) < 0)
-                            colsToAdd.push(col)
-                    }
-                    for(e; e < eLen; e++){//remove
-                        const col = cellsExst[e]
-                        if(cols.indexOf(col) < 0)
-                            colsToRem.push(col)
-                    }
-                }
-                const colLen = colsToAdd.length
-                const colRLen = colsToRem.length
-                if(colLen || colRLen){
-                    for(i; i < len; i++){
-                        let k = 0; let r = 0
-                        const row = document.getElementById(rows[i])
-                        const id = parseInt(row?.id.replace(/dataTableRow/g, ""))
-                        const item = dataTableService.methods.mainData[id]
-                        if(row && item){
-                            for(k; k < colLen; k++){//add
-                                const col = colsToAdd[k]
-                                const eCell = document.querySelector("#" + rows[i] + " .data-cell-" + col.replace(/ /g, deebo.methods.uniSep))
-                                if(eCell){//already there, make visible
-                                    eCell.setAttribute("data-visible", "true")
+                        let c = 0
+                        for(c; c < plen; c++){
+                            const pos = positions[c]
+                            if(pos){
+                                const col = pos.col
+                                const elcol = col.replace(/ /g, deebo.methods.uniSep)
+                                if(pos.vis){
+                                    const id = parseInt(row.id.replace(/dataTableRow/g, ""))
+                                    const item = dataTableService.methods.mainData[id]
+                                    const eCell = document.querySelector("#" + row.id + " .data-cell-" + elcol)
+                                    if(eCell && !eCell.classList.contains("data-visible"))//already there, make visible
+                                        deebo.methods.updateCell(eCell, col, elcol, item[col], id)
                                 } else {
-                                    deebo.methods.addCell(item[col], col, row, id)
-                                }
-                            }
-                            for(r; r < colRLen; r++){//remove
-                                const col = colsToRem[r]
-                                if(row.children.length){
-                                    const rCell = document.querySelector("#" + rows[i] + " .data-cell-" + col.replace(/ /g, deebo.methods.uniSep))
+                                    const rCell = document.querySelector("#" + row.id + " .data-cell-" + elcol)
                                     if(rCell)
-                                        rCell.removeAttribute("data-visible")
+                                        rCell.classList.remove("data-visible")
                                 }
                             }
                         }
                     }
                 }
+                setTimeout( function() { 
+                    deebo.methods.setColsOnVisScreen() 
+                    setTimeout(deebo.methods.cleanUpPossibles)
+                }, 50)
             },
 
-            getVisibleCellsInRow: function(row) {
+            cleanUpPossibles: function() {
                 let i = 0
-                let cells = []
-                if(row){
-                    const kids = row.children
-                    const len = kids.length
-                    for(i; i < len; i++){
-                        const kid = kids[i];
-                        if(kid && kid.getAttribute("data-visible"))
-                            cells.push(deebo.methods.replaceUniSep(deebo.methods.getColFrmClsList(kid, "data-cell-")))
-                    }
-                }
-                return cells;
-            },
-
-            execHorizScrollLeft: function(cols) {
-                let i = 0; let c = 0; let e = 0;
-                const rows = deebo.methods.getRowsByContentOrNo(true)
+                const rows = document.getElementsByClassName("data-table-row")
                 const len = rows.length
-                const clen = cols.length
-                let colsToAdd = []
-                let colsToRem = []
-                const cellsExst =  deebo.methods.getVisibleCellsInRow(document.getElementById(rows[0]))
-                if(cellsExst){
-                    const eLen = cellsExst.length
-                    for(c; c < clen; c++){//add
-                        const col = cols[c]
-                        if(cellsExst.indexOf(col) < 0)
-                            colsToAdd.push(col)
-                    }
-                    for(e; e < eLen; e++){//remove
-                        const col = cellsExst[e]
-                        if(cols.indexOf(col) < 0)
-                            colsToRem.push(col)
-                    }
-                }
-                const colLen = colsToAdd.length
-                const colRLen = colsToRem.length
-                if(colLen || colRLen){
-                    for(i; i < len; i++){
-                        let k = 0; let r = 0
-                        const row = document.getElementById(rows[i])
-                        if(row){
-                            for(k; k < colLen; k++){//add visible
-                                const col = colsToAdd[k]
-                                const cell = document.querySelector("#" + rows[i] + " .data-cell-" + col.replace(/ /g, deebo.methods.uniSep))
-                                if(cell)
-                                    cell.setAttribute("data-visible", "true")
-                            }
-                            for(r; r < colRLen; r++){//remove
-                                const col = colsToRem[r]
-                                if(row.children.length){
-                                    const rCell = document.querySelector("#" + rows[i] + " .data-cell-" + col.replace(/ /g, deebo.methods.uniSep))
-                                    if(rCell)
-                                        rCell.removeAttribute("data-visible")
+                const lftPlus = deebo.methods.rowNumbers ? 75 : 0//ctrl+f "--row-num-width" in css
+                for(i; i < len; i++){
+                    const row = rows[i]
+                    const rId = rows[i].id
+                    const id = parseInt(rId.replace(/dataTableRow/g, ""))
+                    const item = dataTableService.methods.mainData[id]
+                    if(row){
+                        let p = 0
+                        const rclen = row.children.length
+                        if(rclen){
+                            for(p; p < rclen; p++){
+                                const cell = row.children[p]
+                                if(cell && cell.classList.contains("data-cell")){
+                                    const prop = deebo.methods.replaceUniSep(deebo.methods.getColFrmClsList(cell, "data-cell-"))
+                                    const elify = prop?.replace(/ /g, deebo.methods.uniSep)
+                                    const el = document.querySelector("#" + row.id + " .data-cell-" + elify)
+                                    if((el && el.getBoundingClientRect().right < (dataTableService.methods.tblLeft-lftPlus)) && (el && (!el.innerHTML || !el.getAttribute("style"))))
+                                        deebo.methods.updateCell(cell, prop, elify, item[prop], id)//make em all visible
                                 }
                             }
                         }
                     }
                 }
-            },
-
-            getEmptyRowsVert: function(ab) {//with no children
-                let i = 0
-                let rows = []
-                const els = ab === "below" ? document.getElementsByClassName("row-above") : document.querySelectorAll(".data-table-row:not(.row-above)")
-                const len = els.length
-                for(i; i < len; i++){
-                    const row = els[i]
-                    const kids = row?.children.length
-                    if(!kids)
-                        rows.push(row.id)
-                }
-                return rows
             },
 
             execVertScrollDown: function(cols, colLen) {
-                let changed = 0
-                const els = deebo.methods.getEmptyRowsVert();
-                while(changed <= 7){
-                    const el = document.getElementById(els[changed])
-                    const elRect = el?.getBoundingClientRect()
-                    if(el && elRect && elRect.top < dataTableService.methods.tblBot){
-                        let k = 0
-                        const id = parseInt(el.id.replace(/dataTableRow/g, ""))
-                        const item = dataTableService.methods.mainData[id]
-                        if(item && !el.children.length){
-                            for(k; k < colLen; k++){
-                                const col = cols[k]
-                                deebo.methods.addCell(item[col], col, el, id)
+                let canAdd = 0
+                const vlen = dataTableService.methods.visibleCols.length
+                const lastVisInd = cols.indexOf(dataTableService.methods.visibleCols[(vlen-1)]) + 1
+                const bel = document.getElementById("belowArea")
+                const abv = document.getElementById("aboveArea")
+                const bbds = bel.getBoundingClientRect()
+                const rTop = (bbds.top - deebo.methods.verticalRest)
+                const gap = dataTableService.methods.tblBot - rTop
+                const defNum = parseInt(dataTableService.methods.defltRHgt.replace(/[ ]?px/g, ""))
+                if(gap > 0){
+                    let h = 0
+                    let z = deebo.methods.lastElRowIndex + 1
+                    const last = document.getElementById("dataTableRow" + deebo.methods.lastElRowIndex)
+                    if(last && dataTableService.methods.elIsBelowFold(last, dataTableService.methods.tblBot))
+                        return;
+                    let bhToSub = 0
+                    let ahToAdd = 0
+                    const rowsInGap = Math.ceil(gap/defNum)
+                    canAdd = z+(rowsInGap)
+                    const goTo = Math.min(dataTableService.methods.currFilData.length, canAdd)
+                    for(z; z < goTo; z++){
+                        const wldBeElTop = bbds.top + (defNum*h);
+                        const wldBeElBot = wldBeElTop+defNum
+                        if(wldBeElBot < dataTableService.methods.tblTop){
+                            ahToAdd += defNum
+                            bhToSub += defNum
+                        } else {
+                            if(wldBeElTop <= dataTableService.methods.tblBot){
+                                const item = dataTableService.methods.currFilData[z]
+                                const index = dataTableService.methods.currMapping[z] || deebo.methods.findObjIndxInData(item)
+                                const idOfInt = "dataTableRow" + index
+                                if(index > -1 && !document.getElementById(idOfInt)){
+                                    const row = document.createElement("div")
+                                    row.id = idOfInt
+                                    row.className = "data-table-row"
+                                    row.setAttribute("data-index", index)
+                                    row.style.width = deebo.methods.useRowWid
+                                    row.style.height = dataTableService.methods.defltRHgt
+                                    if(!dataTableService.methods.displayOnlySelRows && dataTableService.methods.currSelRows.indexOf(index) > -1)
+                                        row.classList.add("data-row-selected")
+                                    bel.insertAdjacentElement("beforebegin", row)
+                                    for(let k = (colLen-1); k >= 0; k--){
+                                        const col = cols[k]
+                                        if(col)
+                                            deebo.methods.addCell(item[col], col, row, index, (k <= lastVisInd), true)//prepend
+                                    }
+                                    bhToSub += defNum
+                                }
                             }
-                            deebo.methods.changedIds.push(els[changed])
                         }
+                        h += 1
                     }
-                    changed += 1
+                    if(ahToAdd){
+                        deebo.methods.aboveHgt += ahToAdd
+                        abv.style.height = Math.max(0, deebo.methods.aboveHgt) + "px"
+                    }
+                    if(bhToSub){
+                        deebo.methods.belowHgt -= bhToSub
+                        bel.style.height = Math.max(0, deebo.methods.belowHgt) + "px"
+                    }
+                    deebo.methods.setLastRowIndex()
                 }
             },
 
             execVertScrollUp(cols, colLen) {
-                let changed = 0
-                const els = deebo.methods.getEmptyRowsVert("below").reverse().filter( (r, ind) => ind < 7)
-                while(changed <= 7){
-                    const el = document.getElementById(els[changed])
-                    const elRect = el?.getBoundingClientRect()
-                    if(el && elRect && elRect.bottom >= dataTableService.methods.tblTop){
-                        let k = 0
-                        const id = parseInt(el.id.replace(/dataTableRow/g, ""))
-                        const item = dataTableService.methods.mainData[id]
-                        if(item && !el.children?.length){
-                            for(k; k < colLen; k++){
-                                const col = cols[k]
-                                deebo.methods.addCell(item[col], col, el, id)
+                const vlen = dataTableService.methods.visibleCols.length
+                const lastVisInd = cols.indexOf(dataTableService.methods.visibleCols[(vlen-1)]) + 1;
+                const ael = document.getElementById("aboveArea")
+                const blw = document.getElementById("belowArea")
+                const abds = ael.getBoundingClientRect()
+                const defNum = parseInt(dataTableService.methods.defltRHgt.replace(/[ ]?px/g, ""))
+                const rbot = abds.bottom
+                const gap = rbot - dataTableService.methods.tblTop
+                if(gap > 0){
+                    let h = 0
+                    const rlen = document.getElementsByClassName("data-table-row").length
+                    let z = (deebo.methods.lastElRowIndex - rlen)
+                    if(z < 0)
+                        return
+                    let bhToAdd = 0
+                    let ahToSub = 0
+                    const rowsInGap = Math.ceil(gap/defNum)
+                    const min = Math.max(0, (z-rowsInGap))
+                    for(z; z >= min; z--){
+                        const wldBeElBot = rbot - (defNum*h);
+                        const wldBeElTop = wldBeElBot-defNum
+                        if(wldBeElTop > dataTableService.methods.tblBot){
+                            bhToAdd += defNum
+                            ahToSub += defNum
+                        } else {
+                            if(wldBeElBot > dataTableService.methods.tblTop){
+                                const item = dataTableService.methods.currFilData[z]
+                                const index = dataTableService.methods.currMapping[z] || deebo.methods.findObjIndxInData(item)
+                                if(index > -1){
+                                    const row = document.createElement("div")
+                                    row.id = "dataTableRow" + index
+                                    row.className = "data-table-row"
+                                    row.setAttribute("data-index", index)
+                                    row.style.width = deebo.methods.useRowWid
+                                    row.style.height = dataTableService.methods.defltRHgt
+                                    if(!dataTableService.methods.displayOnlySelRows && dataTableService.methods.currSelRows.indexOf(index) > -1)
+                                        row.classList.add("data-row-selected")
+                                    ael.insertAdjacentElement("afterend", row)
+                                    let k = 0
+                                    for(k; k < colLen; k++){
+                                        const col = cols[k]
+                                        if(col)
+                                            deebo.methods.addCell(item[col], col, row, index, (k <= lastVisInd))
+                                    }
+                                    ahToSub += defNum
+                                }
                             }
-                            el.classList.remove("row-above")
-                            deebo.methods.changedIds.push(el.id)
                         }
+                        h += 1
                     }
-                    changed += 1
+                    if(ahToSub){
+                        deebo.methods.aboveHgt -= ahToSub
+                        ael.style.height = Math.max(0, deebo.methods.aboveHgt) + "px"
+                    }
+                    if(bhToAdd){
+                        deebo.methods.belowHgt += bhToAdd
+                        blw.style.height = Math.max(0, deebo.methods.belowHgt) + "px"
+                    }
                 }
             },
 
@@ -1435,8 +1559,7 @@ deebo.methods = function() {
                 const len = els.length
                 for(i; i < len; i++){
                     const row = els[i]
-                    const kids = row.children.length
-                    if(kids){
+                    if(row){
                         if(ab === "below" && dataTableService.methods.elIsBelowFold(row, dataTableService.methods.tblBot))
                             rows.push(row.id)
                         if(ab === "above" && dataTableService.methods.elIsAboveFold(row, dataTableService.methods.tblTop))
@@ -1447,93 +1570,63 @@ deebo.methods = function() {
             },
 
             clearAboveFoldRows() {
-                const els = deebo.methods.getRowsWithContentVert("above")
-                const len = Math.min(7, els.length)
-                for(var i = (len-1); i >= 0; i--){
-                    const el = els[i]
-                    if(el){
-                        const row = document.getElementById(el)
-                        if(row){
-                            row.innerHTML = ""
-                            row.classList.add("row-above")
-                            const chk =document.getElementById("checkDataTableRow" + el.replace(/dataTableRow/g, ""))
+                const justids = deebo.methods.getRowsWithContentVert("above")
+                const changes = justids.length
+                if(changes > 0){
+                    const dtb = document.getElementById("dataTableBody")
+                    const ael = document.getElementById("aboveArea")
+                    const defNum = parseInt(dataTableService.methods.defltRHgt.replace(/[ ]?px/g, ""))
+                    const els = document.getElementsByClassName("data-table-row")
+                    const dtChks = document.getElementById("dataTableChecks")
+                    const len = els.length
+                    for(i = (len-1); i >= 0; i--){
+                        const el = els[i]
+                        if(el && justids.includes(el.id)){
+                            const indx = el.id.replace(/dataTableRow/g, "")
+                            dtb.removeChild(el)
+                            const chk =document.getElementById("checkDataTableRow" + indx)
                             if(chk)
-                                document.getElementById("dataTableChecks").removeChild(chk)
+                                dtChks.removeChild(chk)
                         }
+                    }
+                    const ind1 = parseInt(document.getElementsByClassName("data-table-row")[0]?.getAttribute("data-index"))
+                    const item = dataTableService.methods.mainData[(ind1 || -1)]
+                    if(item){
+                        deebo.methods.aboveHgt = deebo.methods.findObjIndxInData(item, "currFilData")*defNum
+                        ael.style.height = Math.max(0, deebo.methods.aboveHgt) + "px"
                     }
                 }
             },
 
             clearBelowFoldRows() {
-                const els = deebo.methods.getRowsWithContentVert("below")
-                const len = Math.min(7, els.length)
-                for(var i = (len-1); i >= 0; i--){
-                    const el = els[i]
-                    if(el){
-                        const row = document.getElementById(el)
-                        if(row){
-                            row.innerHTML = ""
-                            const chk =document.getElementById("checkDataTableRow" + el.replace(/dataTableRow/g, ""))
+                const justids = deebo.methods.getRowsWithContentVert("below")
+                let changes = justids.length
+                if(changes > 0){
+                    const dtb = document.getElementById("dataTableBody")
+                    const blw = document.getElementById("belowArea")
+                    const defNum = parseInt(dataTableService.methods.defltRHgt.replace(/[ ]?px/g, ""))
+                    const els = document.getElementsByClassName("data-table-row")
+                    const dtChks = document.getElementById("dataTableChecks")
+                    const len = els.length
+                    for(let i = (len-1); i >= 0; i--){
+                        const el = els[i]
+                        if(el && justids.includes(el.id)){
+                            const indx = el.id.replace(/dataTableRow/g, "")
+                            dtb.removeChild(el)
+                            const chk =document.getElementById("checkDataTableRow" + indx)
                             if(chk)
-                                document.getElementById("dataTableChecks").removeChild(chk)
+                                dtChks.removeChild(chk)
                         }
                     }
-                }
-            },
-
-            setDataRowHgts: function() {
-                let i = 0;
-                const rows = document.getElementsByClassName("data-table-row")
-                const rLen = rows.length
-                if(rLen){
-                    for(i; i < rLen; i++){
-                        let z = 0;
-                        const row = rows[i]
-                        const cLen = row.children.length
-                        const strtrowH = Math.floor(row.getBoundingClientRect().height)
-                        let rHgt = deebo.methods.getTallestCellInRow(row.children)
-                        if(isNaN(rHgt))
-                            rHgt = strtrowH
-                        for(z; z < cLen; z++){
-                            const cell = row.children[z]
-                            cell["style"]["height"] = rHgt + "px"
-                            const txt = cell.textContent
-                            if(txt){
-                                if(cell.scrollHeight <= rHgt)
-                                    cell["style"]["paddingTop"] = Math.floor((rHgt-22-cell.scrollHeight)/2) + "px";
-                                else
-                                    cell["style"].removeProperty("padding-top")
-                            }
-                        }
-                        row["style"]["height"] = rHgt + "px"
+                    const nwdtrs = document.getElementsByClassName("data-table-row")
+                    const rlen = nwdtrs.length
+                    const indlst = parseInt(nwdtrs[(rlen-1)]?.getAttribute("data-index"))
+                    const item = dataTableService.methods.mainData[(indlst || -1)]
+                    if(item){
+                        deebo.methods.belowHgt = ((dataTableService.methods.currFilData.length-1)-deebo.methods.findObjIndxInData(item, "currFilData"))*defNum
+                        blw.style.height = Math.max(0, deebo.methods.belowHgt) + "px"
                     }
-                    setTimeout(deebo.methods.setRowSelChecksPlacement)
-                }
-            },
-
-            setDataRowHgtsById: function() {
-                const rLen = deebo.methods.changedIds.length
-                for(var i = rLen; i >= 0; i--){
-                    const id = deebo.methods.changedIds[i]
-                    const row = document.getElementById(id)
-                    if(row){
-                        let z = 0
-                        const cLen = row.children.length
-                        const rHgt = deebo.methods.getTallestCellInRow(row.children)
-                        for(z; z < cLen; z++){
-                            const cell = row.children[z]
-                            cell["style"]["height"] = rHgt + "px"
-                            const txt = cell.textContent
-                            if(txt){
-                                if(cell.scrollHeight <= rHgt)
-                                    cell["style"]["paddingTop"] = Math.floor((rHgt-22-cell.scrollHeight)/2) + "px";
-                                else
-                                    cell["style"].removeProperty("padding-top")
-                            }
-                        }
-                        row.style.height = rHgt + "px";
-                        deebo.methods.changedIds.pop()
-                    }
+                    deebo.methods.setLastRowIndex()
                 }
             },
 
@@ -1671,6 +1764,8 @@ deebo.methods = function() {
                         if(event && dataTableService.methods.mainData){//don't wanna set tbl hgt on page load
                             requestAnimationFrame( function() { 
                                 document.getElementById("dataTableBody").style.height = (th + "px") 
+                                if(deebo.methods.rowNumbers)
+                                    try{ document.getElementById("rowNumHeader").nextElementSibling.style.height = th + "px" }catch(e){}
                                 const charts = document.getElementsByClassName("selected-row-insights")[0]
                                 if(charts){
                                     const hhgt = document.getElementById("dataTableHeaders")?.getBoundingClientRect().height
@@ -1779,12 +1874,12 @@ deebo.methods = function() {
                         return new Date(("20" + val.substring(6,8)) + "," + (val.substring(0,2)) + "," + val.substring(3,5))
                     if(/\d{2}(\/|-| )\d{1}(\/|-| )\d{2}/g.test(val))//11-6-25
                         return new Date(("20" + val.substring(5,7)) + "," + (val.substring(0,2)) + "," + ("0"+val.substring(3,4)))
-                    if(/\d{1}(\/|-| )\d{2}(\/|-| )\d{2}/g.test(val))//5-16-25
+                    if(/\d{1}(\/|-| )\d{2}(\/|-| )\d{2}/g.test(val))//5-12-25
                         return new Date(("20" + val.substring(5,7)) + "," + ("0"+val.substring(0,1)) + "," + val.substring(2,4))
                     if(/\d{1}(\/|-| )\d{1}(\/|-| )\d{2}/g.test(val))//5-6-25
                         return new Date(("20" + val.substring(4,6)) + "," + ("0"+val.substring(0,1)) + "," + ("0"+val.substring(2,3)))
                     
-                    if(/\d{4}(\/|-| )\d{2}(\/|-| )\d{2}/g.test(val))//2025-12-16
+                    if(/\d{4}(\/|-| )\d{2}(\/|-| )\d{2}/g.test(val))//2025-12-18
                         return new Date(val.substring(0,4) + "," + (val.substring(5,7)) + "," + val.substring(8,10))
                     if(/\d{4}(\/|-| )\d{2}(\/|-| )\d{1}/g.test(val))//2025-12-6
                         return new Date(val.substring(0,4) + "," + (val.substring(5,7)) + "," + ("0"+val.substring(8,9)))
@@ -1916,21 +2011,21 @@ deebo.methods = function() {
             },
 
             giveCellAncOptions: function(index, elCol, ancs) {
-                let err;
-                try{ let p = new DOMParser() }catch(e){ err = true }
-                if(typeof document.querySelectorAll === "function" && !err && ancs.some( function(a) { return deebo.methods.mystartsWith(a, "https") })){
-                    if(!elCol)//prim
-                        deebo.methods.linkCell = ("#dataTableRow" + index + " a")
-                    else
-                        deebo.methods.linkCell = ("#dataTableRow" + index + " .data-cell-" + elCol + " a")
-                    const exsts = deebo.methods.linkCells.filter( function(c) { return c.cell === deebo.methods.linkCell })
-                    if(exsts.length){//they already said to do it or not on this cell
-                        if(exsts[0].optOut)
-                            return false;
-                        return deebo.methods.processCellLinks()
-                    }
-                    deebo.methods.processCellLinks()
-                }
+                // let err;
+                // try{ let p = new DOMParser() }catch(e){ err = true }
+                // if(typeof document.querySelectorAll === "function" && !err && ancs.some( function(a) { return deebo.methods.mystartsWith(a, "https") })){
+                //     if(!elCol)//prim
+                //         deebo.methods.linkCell = ("#dataTableRow" + index + " a")
+                //     else
+                //         deebo.methods.linkCell = ("#dataTableRow" + index + " .data-cell-" + elCol + " a")
+                //     const exsts = deebo.methods.linkCells.filter( function(c) { return c.cell === deebo.methods.linkCell })
+                //     if(exsts.length){//they already said to do it or not on this cell
+                //         if(exsts[0].optOut)
+                //             return false;
+                //         return deebo.methods.processCellLinks()
+                //     }
+                //     deebo.methods.processCellLinks()
+                // }
             },
 
             processCellLinks: function(e) {//keep the confitm open as the links load to keep the mem obj
@@ -2096,31 +2191,24 @@ deebo.methods = function() {
             setSingleRowHgt: function(val, row, force) {
                 let z = 0;
                 const lcLen = row.children?.length
-                // const strLenLim = window.innerWidth >= 1024 ? 20 : 15
                 const rHgt = force ? val : Math.max(val, (deebo.methods.desRowHeight || Math.ceil(row.getBoundingClientRect().height)))
                 const useHgt = Math.floor(rHgt) + "px";
-                // const lHgt = (rHgt-28) + "px";
                 row["style"]["height"] = useHgt
                 for(z; z < lcLen; z++){
                     try{
                         const kid = row.children[z]
                         kid["style"]["height"] = useHgt
-                        if(tblDragEvents.methods.colDragStartFrmCellTracker.row && tblDragEvents.methods.colDragStartFrmCellTracker.ystart){
-                            const txt = kid?.textContent
-                            if(kid){
-                                // if((!txt || (txt && txt.length <= strLenLim)))
-                                //     kid.firstElementChild.style.lineHeight = lHgt
-                                if(txt/* && /PRE/g.test(kid.firstElementChild.nodeName)*/){
-                                    // kid.firstElementChild.style.removeProperty("line-height")
-                                    if(kid/*.firstElementChild*/.scrollHeight < rHgt)
-                                        kid/*.firstElementChild*/["style"]["paddingTop"] = Math.floor((rHgt-22-kid/*.firstElementChild*/.scrollHeight)/2) + "px";
-                                    else
-                                        kid/*.firstElementChild*/["style"].removeProperty("padding-top")
-                                }
-                            }
-                        }
                     }catch(e){}
                 }
+                if(row && deebo.methods.rowNumbers){
+                    const item = dataTableService.methods.mainData[parseInt(row.getAttribute("data-index"))]
+                    if(item){
+                        const indx = deebo.methods.findObjIndxInData(item, "currFilData") + 1
+                        const rNum = document.getElementById("rn" + indx)
+                        if(rNum)
+                            rNum.style.height = useHgt
+                    }
+                } 
                 setTimeout(deebo.methods.setRowSelChecksPlacement)
             },
 
@@ -2155,8 +2243,8 @@ deebo.methods = function() {
 
             filterBuildUp: [],
 
-            resetColFilter: function(event) {
-                event && event.stopPropagation()
+            resetColFilter: function(event, skipFil) {
+                try{event && event.stopPropagation()}catch(e){}
                 const elCol = event?.target?.id.replace(/xfil/g, "")
                 const field = deebo.methods.replaceUniSep(elCol)
                 const fil = document.getElementById("filter" + elCol)
@@ -2170,23 +2258,17 @@ deebo.methods = function() {
                         comp.value = null
                         dataTableService.methods.dataFilSrtTracker[field].comparator = null
                     }
-                    deebo.methods.filterOnKeyUp({ target: { id: ("filter" + elCol), value: "" } })
+                    if(!skipFil)
+                        deebo.methods.filterOnKeyUp({ target: { id: ("filter" + elCol), value: "" } })
                     event.target.className = "hide"
                 }
-            },
-
-            killAllBtnFilXs: function() {
-                const els = document.getElementsByClassName("btn-x-filter")
-                const len = els.length
-                for(var i = (len-1); i >= 0; i--)
-                    els[i].className = "hide"
             },
 
             clickAllBtnFilXs: function() {
                 const els = document.getElementsByClassName("btn-x-filter")
                 const len = els.length
                 for(var i = (len-1); i >= 0; i--)
-                    try{ els[i].click() }catch(e){}
+                    deebo.methods.resetColFilter({ target: els[i] }, true)
             },
 
             filterOnKeyUp: function(event) {
@@ -2212,10 +2294,14 @@ deebo.methods = function() {
                         dataTableService.methods.dataFilSrtTracker[field].filter = val || ""
                         dataTableService.methods.columnFilter(dataTableService.methods.mainData, field, dataTableService.methods.dataFilSrtTracker, dataTableService.methods.sortOrder, manual)
                     }
-                    deebo.methods.renderCurrData(val, (topFilt || field))
+                    deebo.methods.renderCurrData(null, (topFilt || field))
                     document.getElementById("btnReset").disabled = false
                     const dct = dataTableService.methods.currFilData.length.toLocaleString(undefined, { maximumFractionDigits: 0 })
-                    document.getElementById("totalRows").textContent = dct
+                    const tRows = document.getElementById("totalRows")
+                    if(tRows){
+                        tRows.textContent = dct
+                        deebo.methods.handleFilSDataStr(tRows)
+                    }
                     deebo.methods.setExportCount(dct)
                     setTimeout( function() { 
                         dataTableService.methods.isFiltering = false
@@ -2247,79 +2333,102 @@ deebo.methods = function() {
                 }
             },
 
-            renderCurrData: function(val, field) {//filter val
+            resetTblBody: function(tbody) {
+                const abv = document.createElement("div")
+                const blw = document.createElement("div")
+                abv.id = "aboveArea"
+                blw.id = "belowArea"
+                tbody.appendChild(abv)
+                tbody.appendChild(blw);
+            },
+
+            renderCurrData: function(reset, field) {
                 const tbody = document.getElementById("dataTableBody")
                 const tbodyX = tbody.scrollLeft
                 tbody.scrollTop = 0
                 tbody.innerHTML = ""
                 let didXScrl = false;
+                deebo.methods.resetTblBody(tbody)
                 document.getElementById("dataTableChecks").innerHTML = ""
-                let n = 0; let init = 20
+                if(deebo.methods.rowNumbers)
+                    try{ document.getElementById("rowNumBody").innerHTML = ""}catch(e){}
+                let n = 0;
+                deebo.methods.aboveHgt = 0
+                deebo.methods.belowHgt = 0
+                dataTableService.methods.currMapping = {}
+                const defNum = parseInt(dataTableService.methods.defltRHgt.replace(/[ ]?px/g, ""))
+                const init = Math.max(deebo.methods.dTblHeight/defNum);
                 const btnCharts = document.getElementById("btnCharts")
                 const len = dataTableService.methods.currFilData.length
                 if(!len){//always just add 1
                     const row = document.createElement("div")
                     deebo.methods.styleEmptyFilDataRow(row, tbody, tbodyX)
                     btnCharts.disabled = true
+                    const tRows = document.getElementById("totalRows")
+                    if(tRows){
+                        tRows.textContent = 0
+                        deebo.methods.handleFilSDataStr(tRows)
+                    }
                     return tbody.appendChild(row)
                 }
-                const colsHs = document.getElementsByClassName("col-header")
-                const colLen = colsHs.length
+                const colLen = deebo.methods.columnNames.length
                 let hidden = []
                 for(const prop in dataTableService.methods.dataFilSrtTracker){
                     if(dataTableService.methods.dataFilSrtTracker[prop].minimize)
                         hidden.push(prop)
                 }
-                const addCell = function(text, prop, row, indx) {
+                const addCell = function(text, prop, row, indx, vis) {
                     const cell = document.createElement("div")
                     const elProp = prop?.replace(/ /g, deebo.methods.uniSep) 
-                    cell.style.width = dataTableService.methods.dataFilSrtTracker[prop]?.colWidth || deebo.methods.useColWid
                     cell.className = "data-cell"
                     cell.className += (" data-cell-" + (elProp || "data"))
-                    if(hidden.indexOf(prop) > -1)
-                        cell.className += " col-header-minimized"
-                    const head = document.getElementById("columnHeader" + elProp)
-                    const filInp = document.getElementById("filter" + (elProp || "data"))
-                    const notNum = (filInp && (filInp.getAttribute("type") != "number" || /(year|yr|fy)/g.test((prop || "data").toLocaleLowerCase()))) ? true : false
-                    if(head && head.classList.contains("col-item-freeze"))
-                        cell.classList.add("col-item-freeze")
-                    if(filInp && filInp.getAttribute("type") === "number")
-                        cell.classList.add("data-cell-riiight")
-                    let useTxt; let sym;
-                    if(dataTableService.methods.dataFilSrtTracker && dataTableService.methods.dataFilSrtTracker[prop]){
-                        sym = dataTableService.methods.dataFilSrtTracker[prop]["colCellSymbol"]
-                        useTxt = deebo.methods.figureCellText(text, notNum, dataTableService.methods.dataFilSrtTracker[prop]["colCellSymbol"])
-                    } else {
-                        useTxt = deebo.methods.figureCellText(text, notNum)
+                    if(vis){
+                        if(hidden.indexOf(prop) > -1)
+                            cell.className += " col-header-minimized"
+                        const head = document.getElementById("columnHeader" + elProp)
+                        const filInp = document.getElementById("filter" + (elProp || "data"))
+                        const notNum = (filInp && (filInp.getAttribute("type") != "number" || /(year|yr|fy)/g.test((prop || "data").toLocaleLowerCase()))) ? true : false
+                        if(head && head.classList.contains("col-item-freeze"))
+                            cell.classList.add("col-item-freeze")
+                        if(filInp && filInp.getAttribute("type") === "number")
+                            cell.classList.add("data-cell-riiight")
+                        let useTxt; let sym;
+                        cell.style.height = dataTableService.methods.defltRHgt
+                        cell.style.width = dataTableService.methods.dataFilSrtTracker[prop]?.colWidth || deebo.methods.useColWid
+                        if(dataTableService.methods.dataFilSrtTracker && dataTableService.methods.dataFilSrtTracker[prop]){
+                            sym = dataTableService.methods.dataFilSrtTracker[prop]["colCellSymbol"]
+                            useTxt = deebo.methods.figureCellText(text, notNum, dataTableService.methods.dataFilSrtTracker[prop]["colCellSymbol"])
+                        } else {
+                            useTxt = deebo.methods.figureCellText(text, notNum)
+                        }
+                        if(useTxt.prop === "textContent"){
+                            cell.textContent = useTxt.value
+                            if(deebo.methods.editable)
+                                cell.setAttribute("contenteditable", "true")
+                        } else {
+                            cell.innerHTML = useTxt.value
+                            if(deebo.methods.editable && !/<img/g.test(useTxt.value))
+                                cell.setAttribute("contenteditable", "true")
+                        }
+                        if(sym){
+                            let symbolCls = ["$","€","£","¥","₣","₹"].indexOf(sym) > -1 ? "has-symbol-b" : "has-symbol";
+                            cell.classList.add(symbolCls)
+                            cell.setAttribute("data-symbol", sym)
+                        }
+                        if(useTxt.ancs && useTxt.ancs.length)
+                            setTimeout( function() { deebo.methods.giveCellAncOptions(indx, elProp, useTxt.ancs) })
+                        if(window.innerWidth >= deebo.methods.mouseEventBreak){
+                            cell.addEventListener("mousemove", tblDragEvents.methods.checkItemBorderCursor)
+                            cell.addEventListener("mousemove", tblDragEvents.methods.handleCellSizeAdjust)
+                            cell.addEventListener("mousedown", tblDragEvents.methods.handleCellSizeAdjust)
+                        }
+                        cell.addEventListener("focus", deebo.methods.setCellToEdit);
+                        cell.addEventListener("blur", deebo.methods.execCellEdit);
+                        cell.className += " data-visible";
                     }
-                    if(useTxt.prop === "textContent"){
-                        cell.textContent = useTxt.value
-                        if(deebo.methods.editable)
-                            cell.setAttribute("contenteditable", "true")
-                    } else {
-                        cell.innerHTML = useTxt.value
-                        if(deebo.methods.editable && !/<img/g.test(useTxt.value))
-                            cell.setAttribute("contenteditable", "true")
-                    }
-                    if(sym){
-                        let symbolCls = ["$","€","£","¥","₣","₹"].indexOf(sym) > -1 ? "has-symbol-b" : "has-symbol";
-                        cell.classList.add(symbolCls)
-                        cell.setAttribute("data-symbol", sym)
-                    }
-                    if(useTxt.ancs && useTxt.ancs.length)
-                        setTimeout( function() { deebo.methods.giveCellAncOptions(indx, elProp, useTxt.ancs) })
-                    if(window.innerWidth >= deebo.methods.mouseEventBreak){
-                        cell.addEventListener("mousemove", tblDragEvents.methods.checkItemBorderCursor)
-                        cell.addEventListener("mousemove", tblDragEvents.methods.handleCellSizeAdjust)
-                        cell.addEventListener("mousedown", tblDragEvents.methods.handleCellSizeAdjust)
-                    }
-                    cell.addEventListener("focus", deebo.methods.setCellToEdit);
-                    cell.addEventListener("blur", deebo.methods.execCellEdit);
-                    (row || tbody).appendChild(cell)
+                    row.appendChild(cell)
                     if(row && prop && row.children.length === 1)
                         deebo.methods.createSelectRowCheck(row.getAttribute("data-index"))
-                    if(!row && !prop)                        
-                        deebo.methods.createSelectRowCheck(indx)
                     if(field && field === prop && !didXScrl){
                         setTimeout( function() { 
                             tbody.scrollLeft = tbodyX 
@@ -2332,66 +2441,66 @@ deebo.methods = function() {
                     }
                 }
                 const limit = Math.min(init, len)
+                const blw = document.getElementById("belowArea")
                 let horizLim = Math.min(deebo.methods.setMaxCols(window.innerWidth), colLen)
-                const useRowWid = deebo.methods.getAllColWidth(colLen - deebo.methods.getMiniColCount()) + "px";
+                deebo.methods.useRowWid = deebo.methods.getAllColWidth(colLen - deebo.methods.getMiniColCount()) + "px";
                 if(field && field !== "topLevelDataFilter"){
-                    const vlen = dataTableService.methods.visibleCols.length
-                    const uCols = function() { 
-                        let ids = []
-                        let c = 0
-                        for(c; c < colLen; c++)
-                            ids.push(deebo.methods.replaceUniSep(colsHs[c].id.replace(/columnHeader/g, "")))
-                        return ids
+                    let room = 0
+                    let offst = 3
+                    const fhead = document.getElementById("columnHeader" + field.replace(/ /g, deebo.methods.uniSep))
+                    if(fhead){
+                        const bds = fhead.getBoundingClientRect()
+                        room = dataTableService.methods.tblRight - bds.right
+                        offst = Math.ceil(room/bds.width)
                     }
-                    const lastVis = uCols().indexOf(dataTableService.methods.visibleCols[(vlen-1)]) + 1
-                    horizLim = Math.max(horizLim, lastVis)
+                    horizLim = Math.max(horizLim, (deebo.methods.columnNames.indexOf(field) + offst))
                 }
                 for(n; n < limit; n++){
                     const item = dataTableService.methods.currFilData[n]
-                    const index = deebo.methods.findObjIndxInData(item)
+                    const index = !reset ? deebo.methods.findObjIndxInData(item) : n
                     const row = document.createElement("div")
                     row.id = "dataTableRow" + index
                     row.className = "data-table-row"
                     row.setAttribute("data-index", index)
                     if(!dataTableService.methods.displayOnlySelRows && dataTableService.methods.currSelRows.indexOf(index) > -1)
                         row.classList.add("data-row-selected")
-                    tbody.appendChild(row)
+                    blw.insertAdjacentElement("beforebegin", row)
                     let k = 0
-                    for(k; k < horizLim; k++){
-                        if(colsHs[k]){
-                            const col = deebo.methods.replaceUniSep(colsHs[k].id.replace(/columnHeader/g, ""))
-                            addCell(item[col], col, row, index)
-                        }
+                    for(k; k < colLen; k++){
+                        const col = deebo.methods.columnNames[k]
+                        if(col)
+                            addCell(item[col], col, row, index, (k <= horizLim))
                     }
-                    row.style.width = useRowWid
+                    row.style.width = deebo.methods.useRowWid
+                    row.style.height = dataTableService.methods.defltRHgt
+                    dataTableService.methods.currMapping[n] = index
                 }
                 deebo.methods.setLastRowIndex()
                 deebo.methods.blockEventsInCells()
                 btnCharts.disabled = false
-                if(len){
-                    setTimeout(deebo.methods.setDataRowHgts, 150)
-                    setTimeout( function() { //add rows that won't render yet
-                        if(len > init){
-                            let z = deebo.methods.lastElRowIndex + 1
-                            const phund = (z+deebo.methods.rowBuffer)
-                            const goTo = Math.min(len, phund)
-                            for(z; z < goTo; z++){
-                                const index = deebo.methods.findObjIndxInData(dataTableService.methods.currFilData[z])
-                                if(index > -1){
-                                    const row = document.createElement("div")
-                                    row.id = "dataTableRow" + index
-                                    row.className = "data-table-row"
-                                    row.setAttribute("data-index", index)
-                                    tbody.appendChild(row)
-                                    row.style.width = useRowWid
-                                    row.style.height = "78px"
-                                }
-                            }
-                            deebo.methods.setLastRowIndex()
-                        }
-                    }, 350)
+                const tRows = document.getElementById("totalRows")
+                if(tRows){
+                    tRows.textContent = dataTableService.methods.currFilData.length.toLocaleString(undefined, { maximumFractionDigits: 0 })
+                    deebo.methods.handleFilSDataStr(tRows)
                 }
-                deebo.methods.setHoldingCheckCls()
+                if(len){
+                    setTimeout(deebo.methods.setRowSelChecksPlacement)
+                    if(len > init){
+                        let total = 0
+                        let z = deebo.methods.lastElRowIndex + 1
+                        for(z; z < len; z++){
+                            total += 1
+                            if(reset)
+                                dataTableService.methods.currMapping[z] = z
+                        }
+                        deebo.methods.belowHgt = total*defNum
+                        blw.style.height = deebo.methods.belowHgt + "px"
+                    }
+                    setTimeout( function() { //add rows that won't render yet
+                        deebo.methods.setIdealColWidth(deebo.methods.columnNames, horizLim)
+                    }, 250)
+                    deebo.methods.setHoldingCheckCls()
+                }
             },
 
             resetCurrentData: function(event, col) {
@@ -2413,16 +2522,15 @@ deebo.methods = function() {
                 deebo.methods.removeAllFreezeCols()
                 dataTableService.methods.resetFilSrtTracker()
                 dataTableService.methods.currFilData = dataTableService.methods.mainData.filter( function(d) { return true })
-                deebo.methods.renderCurrData(null, col)
+                deebo.methods.renderCurrData(true, col)
                 document.getElementById("topLevelDataFilter").value = ""
                 const dct = dataTableService.methods.currFilData.length.toLocaleString(undefined, { maximumFractionDigits: 0 })
-                document.getElementById("totalRows").textContent = dct
+                const tRows = document.getElementById("totalRows")
+                if(tRows){
+                    tRows.textContent = dct
+                    deebo.methods.handleFilSDataStr(tRows)
+                }
                 deebo.methods.setExportCount(dct)
-                setTimeout( function() { 
-                    const tbl = document.getElementById("dataTableBody")
-                    tbl.scrollTop = 0
-                    // tbl.scrollLeft = 0
-                })
             },            
 
             getMiniColCount: function() {
@@ -2485,7 +2593,6 @@ deebo.methods = function() {
                         const normProp = deebo.methods.replaceUniSep(col)
                         if(!currCol.minimize){//hide it
                             dataTableService.methods.dataFilSrtTracker[normProp].minimize = true
-                            dataTableService.methods.dataFilSrtTracker[normProp].colWidth = null
                             dataTableService.methods.sortOrder = dataTableService.methods.sortOrder.filter( function(s) { return s !== normProp })
                             const el = document.getElementById("sortInd" + col)
                             if(el)
@@ -2579,6 +2686,7 @@ deebo.methods = function() {
                     if(btnMin)
                         setTimeout( function() { btnMin.disabled = false }, 320)
                     setTimeout(deebo.methods.setColHeaderHgt)
+                    setTimeout(deebo.methods.testHideMinBtn)
                 }
             },
 
@@ -2889,6 +2997,10 @@ deebo.methods = function() {
                     tbl.style.overflow = "hidden"
                 const el = document.getElementById("selectedRowsInsights")
                 const cols = deebo.methods.getAllColsAtRuntime(true, true);
+                if(deebo.methods.rowNumbers){
+                    document.getElementsByClassName("row-numbers")[0].classList.add("hide")
+                    document.getElementById("dataTable").className = "data-table"
+                }
                 if(dataTableService.methods.currSelRows.length){
                     const selData = dataTableService.methods.mainData.filter( function(d, ind) { return dataTableService.methods.currSelRows.indexOf(ind) > -1 })
                     if(!selData || !selData.length)
@@ -2903,7 +3015,6 @@ deebo.methods = function() {
                 }
                 if(tbl && el){
                     const hdrBds = document.getElementById("dataTableHeaders").getBoundingClientRect()
-                    // const pgrBot = document.getElementById("tableFooter").getBoundingClientRect()
                     const tblbds = tbl.getBoundingClientRect()
                     const flTop = Math.floor(hdrBds.top)
                     el.className = "selected-row-insights"
@@ -2912,7 +3023,7 @@ deebo.methods = function() {
                     const nmHgt= parseInt(deebo.methods.dTblHeight.toString())
                     if(!isNaN(nmHgt))
                         tblH = nmHgt;
-                    const elHt = Math.floor(hdrBds.height+tblH/*+pgrBot.height*/)
+                    const elHt = Math.floor(hdrBds.height+tblH)
                     el.style.height = elHt + "px"
                     el.style.left = Math.floor(tblbds.left) + "px"
                     el.style.right = Math.floor(window.innerWidth-tblbds.right) + "px";
@@ -2942,6 +3053,10 @@ deebo.methods = function() {
                         el.className = "hide"
                         el.removeAttribute("style")
                     }catch(e){}
+                }
+                if(deebo.methods.rowNumbers){
+                    document.getElementsByClassName("row-numbers")[0].className = "row-numbers"
+                    document.getElementById("dataTable").classList.add("inline-table")
                 }
                 deebo.methods.showCharts = false
                 deebo.methods.toggleTopControls(false)
@@ -3180,7 +3295,7 @@ deebo.methods = function() {
                                     pieCharts.push({ inner: inner, counts: counts, type: ((boolData || bitData) ? "boolean" : "string") })
                             }
                         }
-                    }catch(e){ }
+                    }catch(e){}
                 }
                 
                 if(len){
@@ -4068,17 +4183,17 @@ deebo.methods = function() {
                 let filinfo = "Filtered By:";
                 let srtinfo = "Sorted By:";
                 const doWithoutFilt = ["Not Empty", "Empty"]
+                const initB = " <span>";
                 for(const prop in dataTableService.methods.dataFilSrtTracker){
                     const obj = dataTableService.methods.dataFilSrtTracker[prop]
                     const colNm = deebo.methods.sanitizeUi(deebo.methods.titleCase(prop));
-                    const initB = " <span>";
                     if(obj && (obj.filter || dataTableService.methods.hasUnchkdDDVals(obj) || (obj.comparator && doWithoutFilt.indexOf(obj.comparator) > -1))){
                         const comp = deebo.methods.mapCompToSym(obj.comparator ? obj.comparator : (obj.type === "string" ? "Contains" : "Equals"))
                         let propFilTxt = (initB + colNm + "</span> " + comp)
                         if(obj.filter)
                             propFilTxt += (initB + deebo.methods.sanitizeUi(obj.filter) + "</span>");
                         if(!obj.filter && obj.selDDVals && obj.selDDVals.length && dataTableService.methods.hasUnchkdDDVals(obj)){
-                            const chkdVals = obj.selDDVals.filter( function(v) { return v && v.checked }).map( function(v) { return v.value }).join()
+                            const chkdVals = obj.selDDVals.filter( function(v) { return v && v.checked} ).map( function(v) {return v.value}).join()
                             propFilTxt += (initB + chkdVals + "</span>");
                         }
                         if(propFilTxt.endsWith("Equals"))
@@ -4089,8 +4204,15 @@ deebo.methods = function() {
                             filinfo += ("," + propFilTxt)
                         }
                     }
+                }
+                let s = 0
+                const solen = dataTableService.methods.sortOrder.length
+                for(s; s < solen; s++){
+                    const prop = dataTableService.methods.sortOrder[s]
+                    const obj = dataTableService.methods.dataFilSrtTracker[prop]
                     if(obj && obj.sort){
-                        const propSrtTxt = (initB + colNm + "</span> " + obj.sort.toLocaleUpperCase())
+                        const colNm = deebo.methods.sanitizeUi(deebo.methods.titleCase(prop));
+                        const propSrtTxt = (initB + colNm + "</span> " + obj.sort)
                         if(srtinfo === "Sorted By:"){
                             srtinfo += propSrtTxt
                         } else {
@@ -4131,6 +4253,8 @@ dataTableService.methods = function() {
             tblTop: 0,
             tblLeft: 0,
             tblRight: 0,
+            currMapping: {},
+            defltRHgt: "50px",
             currFilData: null,
             isFiltering: false,
             currSelRows: [],//just be an index of mainData
@@ -4163,8 +4287,8 @@ dataTableService.methods = function() {
             },
 
             setTblVertBounds: function() {
-                dataTableService.methods.tblBot = (document.getElementById("tableFooter")?.getBoundingClientRect().top || 0) + 250
-                dataTableService.methods.tblTop = (document.getElementsByClassName("data-table-headers")[0]?.getBoundingClientRect().bottom || 0) - 200
+                dataTableService.methods.tblBot = (document.getElementById("tableFooter")?.getBoundingClientRect().top || 0)
+                dataTableService.methods.tblTop = (document.getElementsByClassName("data-table-headers")[0]?.getBoundingClientRect().bottom || 0)
             },
 
             setTblHorizBounds: function() {
@@ -4173,6 +4297,11 @@ dataTableService.methods = function() {
                     dataTableService.methods.tblLeft = (dtBds.left || 0) - 200
                     dataTableService.methods.tblRight = (dtBds.right || 0) + 250
                 }
+            },
+
+            setTableBounds: function() {
+                dataTableService.methods.setTblVertBounds()//critical
+                dataTableService.methods.setTblHorizBounds()
             },
 
             elIsAboveFold(el, top) {
@@ -4204,14 +4333,14 @@ dataTableService.methods = function() {
                 return obj
             },
 
-            resetFilSrtTracker: function() {
+            resetFilSrtTracker: function(keepMins) {
                 for(const prop in dataTableService.methods.dataFilSrtTracker){
                     const fsObj = dataTableService.methods.dataFilSrtTracker[prop]
                     const oType = fsObj["type"]//keep
                     const ddvals = fsObj["selDDVals"]?.map( function(v) {v.checked = true; return v})//keep
                     const oWid = fsObj["colWidth"]//keep
                     const sym = fsObj["colCellSymbol"]//keep
-                    const min = false;
+                    const min = keepMins ? fsObj["minimize"] : false;
                     const elId = prop?.replace(/ /g, deebo.methods.uniSep)
                     const colFilEl = document.getElementById("filter" + elId)
                     const comp = document.getElementById("selectComp" + elId);
@@ -4595,7 +4724,6 @@ tblDragEvents.methods = function() {
                 let col
                 const cls = "moveable-col"
                 const rcls = "moveable-row"
-                const bbot = "bot-bord-cell"
                 const clist = e.target.classList
                 if(e.type === "mousedown" && /data-cell/g.test(e.target.className)){
                     if(e && e.target && /data-cell/g.test(e.target.className))
@@ -4627,7 +4755,7 @@ tblDragEvents.methods = function() {
 
                     if(clist.contains(rcls)){
                         deebo.methods.currColumnEdit = null
-                        const elToUse = col.className.indexOf(bbot) > -1 ? col : col.parentElement
+                        const elToUse = col.parentElement
                         tblDragEvents.methods.colDragStartFrmCellTracker = { col: null, row: elToUse, xstart: null, ystart: e.offsetY, resized: false }
                         window.addEventListener("mouseup", tblDragEvents.methods.handleColResMouseUp)
                     }
@@ -4706,7 +4834,12 @@ tblDragEvents.methods = function() {
                     const tblWant = Math.min((deebo.methods.dTblHeight + useHgt), max);
                     deebo.methods.dTblHeight = Math.floor(Math.max(tblWant, 100))
                     deebo.methods.saveTheme({ target: { id: "desTblHeight", value: deebo.methods.dTblHeight } })//force this event
-                    setTimeout(deebo.methods.setRowSelChecksPlacement)
+                    setTimeout( function() {
+                        dataTableService.methods.setTableBounds()
+                        deebo.methods.setRowSelChecksPlacement()
+                        if(!deebo.methods.showCharts)
+                            document.getElementById("dataTableBody").scrollBy(0, 1)
+                    })
                 }catch(err){}
             },
 
@@ -4757,12 +4890,13 @@ tblDragEvents.methods = function() {
                         let wids = []
                         let useWid = 50
                         const els = document.getElementsByClassName("data-cell-" + deebo.methods.currColumnEdit)
+                        const nw = els[0]?.getBoundingClientRect().width || 0
                         const len = els.length
                         for(i; i < len; i++)
                             wids.push(els[i].scrollWidth)
-                        if(useWid && useWid > 0){
-                            useWid =wids.sort()[(len-1)]
-                            const cswid = (Math.max(useWid+1) + "px")
+                        useWid =wids.sort()[(len-1)]
+                        if(useWid && useWid > nw){
+                            const cswid = Math.ceil(useWid+1) + "px"
                             deebo.methods.updateUiColCellTheme("width", cswid) 
                             document.getElementById("columnHeader" + deebo.methods.currColumnEdit).style.width = cswid
                         }
@@ -4819,9 +4953,17 @@ tblDragEvents.methods = function() {
                                 }
                                 const dtB = document.getElementById("dataTableBody")
                                 const willSclTo = dtB.scrollLeft
-                                deebo.methods.resetCurrentData()
-                                tblDragEvents.methods.reinitBFrzOnReord(document.getElementsByClassName("col-header")[0])
-                                setTimeout( function() { dtB.scrollLeft = willSclTo })
+                                setTimeout( function() {
+                                    let i = 0
+                                    deebo.methods.columnNames = []
+                                    const els = document.getElementsByClassName("col-header")
+                                    const len = els.length
+                                    for(i; i < len; i++)
+                                        deebo.methods.columnNames.push(deebo.methods.replaceUniSep(els[i].id.replace(/^columnHeader/, "")))
+                                    deebo.methods.renderCurrData()
+                                    tblDragEvents.methods.reinitBFrzOnReord(document.getElementsByClassName("col-header")[0])
+                                    setTimeout( function() { dtB.scrollLeft = willSclTo })
+                                })
                             }
                         }
                     }
@@ -4868,21 +5010,23 @@ tblDragEvents.methods = function() {
 }()
 
 document.addEventListener("DOMContentLoaded", function() {
-    const tlFilt = document.getElementById("topLevelDataFilter")
-    const btnReset = document.getElementById("btnReset")
-    if(tlFilt){
-        tlFilt.oninput = deebo.methods.filterOnKeyUp
-        tlFilt.onkeyup = deebo.methods.filterOnKeyUp
-    }
-    if(btnReset)
-        btnReset.addEventListener("click", deebo.methods.resetCurrentData)
-    document.getElementById("btnXSelRows").addEventListener("click", deebo.methods.clearSelectedRows)
-    document.getElementById("btnTogSelRows").addEventListener("click", deebo.methods.toggleSelectedRows)
-    document.getElementById("btnExportCsv").addEventListener("click", deebo.methods.handleExportData)
-    document.getElementById("btnExportPsv").addEventListener("click", deebo.methods.handleExportData)
-    document.getElementById("btnExportTsv").addEventListener("click", deebo.methods.handleExportData)
-    document.getElementById("btnExportJson").addEventListener("click", deebo.methods.handleExportData)
-    document.getElementById("btnCharts").addEventListener("click", deebo.methods.displaySelectedInsights)
-    document.getElementsByClassName("deebo-dd-contain")[0].addEventListener("click", deebo.methods.toggleExportOpts)
-    window.addEventListener("resize", deebo.methods.cleanUpPieLayovers)
+    try{
+        const tlFilt = document.getElementById("topLevelDataFilter")
+        const btnReset = document.getElementById("btnReset")
+        if(tlFilt){
+            tlFilt.oninput = deebo.methods.filterOnKeyUp
+            tlFilt.onkeyup = deebo.methods.filterOnKeyUp
+        }
+        if(btnReset)
+            btnReset.addEventListener("click", deebo.methods.resetCurrentData)
+        document.getElementById("btnXSelRows").addEventListener("click", deebo.methods.clearSelectedRows)
+        document.getElementById("btnTogSelRows").addEventListener("click", deebo.methods.toggleSelectedRows)
+        document.getElementById("btnExportCsv").addEventListener("click", deebo.methods.handleExportData)
+        document.getElementById("btnExportPsv").addEventListener("click", deebo.methods.handleExportData)
+        document.getElementById("btnExportTsv").addEventListener("click", deebo.methods.handleExportData)
+        document.getElementById("btnExportJson").addEventListener("click", deebo.methods.handleExportData)
+        document.getElementById("btnCharts").addEventListener("click", deebo.methods.displaySelectedInsights)
+        document.getElementsByClassName("deebo-dd-contain")[0].addEventListener("click", deebo.methods.toggleExportOpts)
+        window.addEventListener("resize", deebo.methods.cleanUpPieLayovers)
+    }catch(e){}
 })
