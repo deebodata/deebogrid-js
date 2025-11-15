@@ -25,7 +25,6 @@ deebo.methods = function() {
             linkCell: null,
             linkCells: [],
             columnNames: [],
-            isScrolling: false,
             showCharts: false,
             currEditIndex: null,
             uProvidedPrimKey: null,
@@ -222,6 +221,10 @@ deebo.methods = function() {
                         try{
                             if(data[i] && typeof data[i] === "object"){
                                 for(const prop in data[i]){
+                                    if(allCols.indexOf(prop) < 0){
+                                        delete data[i][prop]
+                                        continue
+                                    }
                                     const val = data[i][prop]
                                     if(val && typeof val === "string"){
                                         const tval = val.trim()
@@ -351,7 +354,7 @@ deebo.methods = function() {
                         rn.style.height = phgt ? (phgt+"px") : dataTableService.methods.defltRHgt;
                         rn.id = "rn" + num
                         rnin.className = "small-text"
-                        rnin.textContent = num
+                        rnin.textContent = num.toLocaleString(undefined, { maximumFractionDigits: 0 })
                         rn.appendChild(rnin)
                         rbod.appendChild(rn)
                     }
@@ -670,10 +673,18 @@ deebo.methods = function() {
                 }
             },
 
+            setLoading: function() {
+                const tbody = document.getElementById("dataTableBody")
+                const lrow = document.createElement("div")
+                deebo.methods.styleEmptyFilDataRow(lrow, tbody, null, "Loading...")
+                tbody.appendChild(lrow)
+            },
+
             buildInitUiDataTable: function(data, color1, color2, blockEditing, hideRowNumbers) {//will be array of objects
                 const cols = Object.keys(data[0])         
                 const head = document.getElementById("dataTableHeaders")
                 const tbody = document.getElementById("dataTableBody")
+                try{ tbody.removeChild(document.getElementsByClassName("data-table-row")[0]) }catch(e){}
                 if(blockEditing)
                     deebo.methods.editable = false;
                 try{
@@ -1247,7 +1258,6 @@ deebo.methods = function() {
             scrollDir: "down",
 
             execVertScroll: function(top) {
-                deebo.methods.isScrolling = true
                 if(top >= deebo.methods.verticalRest){
                     deebo.methods.execVertScrollDown(deebo.methods.columnNames, deebo.methods.columnNames.length)
                     deebo.methods.clearAboveFoldRows()
@@ -1268,7 +1278,6 @@ deebo.methods = function() {
                     return;
                 deebo.methods.setRowSelChecksPlacement()
                 setTimeout( function() { 
-                    deebo.methods.isScrolling = false
                     deebo.methods.setColsOnVisScreen()
                     setTimeout(deebo.methods.cleanUpPossibles)
                     setTimeout(deebo.methods.blockEventsInCells, 100)
@@ -1751,7 +1760,16 @@ deebo.methods = function() {
                             cols.push(notInCols[n])
                     }
                 }
-                return cols.map( function(c) { return deebo.methods.stripSpecChars(c) })
+                let f =0
+                let fincols = []
+                const strpdcols = cols.map( function(c) {return deebo.methods.stripSpecChars(c) })
+                const slen = strpdcols.length
+                for(f; f < slen; f++){
+                    const scol = strpdcols[f]
+                    if(fincols.indexOf(scol) < 0)
+                        fincols.push(scol)  
+                }
+                return fincols
             },
 
             saveTheme: function(event) {
@@ -2773,7 +2791,7 @@ deebo.methods = function() {
                     els[i].parentElement.removeChild(els[i])
             },
 
-            styleEmptyFilDataRow: function(row, tbody, tbodyX) {
+            styleEmptyFilDataRow: function(row, tbody, tbodyX, msg) {
                 row.style.width = "100%"
                 row.className = "data-table-row"
                 row.className += " flex-center"
@@ -2782,7 +2800,7 @@ deebo.methods = function() {
                 div.className = "center"
                 if(window.innerWidth < 640)
                     div.style.width = "300px"
-                div.textContent = "No data to display for this configuration."
+                div.textContent = msg || "No data to display for this configuration."
                 row.appendChild(div)
                 row.style.whiteSpace = "normal"
                 row.style.height = deebo.methods.dTblHeight + "px"
@@ -3026,7 +3044,7 @@ deebo.methods = function() {
                     const elHt = Math.floor(hdrBds.height+tblH)
                     el.style.height = elHt + "px"
                     el.style.left = Math.floor(tblbds.left) + "px"
-                    el.style.right = Math.floor(window.innerWidth-tblbds.right) + "px";
+                    el.style.right = "0";
                     const scrC = document.getElementsByClassName("sel-ins-scrl-cont")[0]
                     const sH2 = document.querySelector(".selected-row-insights h2")
                     if(scrC && sH2)
@@ -3190,6 +3208,9 @@ deebo.methods = function() {
                         if(allNumData)
                             bitData = colData.every( function(d) { return !d || d === 1 || d === 0 })
                         if(allNumData && !yearCol && !bitData){//num data
+                            let isCurr = false
+                            const sym = dataTableService.methods.dataFilSrtTracker[col]?.colCellSymbol
+                            let symCls
                             const sdiv = document.createElement("div")
                             const adiv = document.createElement("div")
                             const mindiv = document.createElement("div")
@@ -3198,6 +3219,10 @@ deebo.methods = function() {
                             adiv.className = "half-wid";
                             mindiv.className = "half-wid";
                             maxdiv.className = "half-wid";
+                            if(sym){
+                                isCurr = ["$","€","£","¥","₣","₹"].indexOf(sym) > -1
+                                symCls = isCurr ? "has-symbol-b" : "has-symbol"
+                            }
                             let tdiv
                             const numsOnly = colData.filter( function(d) { return !!d || (d === 0) })
                             let noLen = numsOnly.length
@@ -3213,16 +3238,16 @@ deebo.methods = function() {
                             sdiv.id = "sum" + (selOrFil || "") + elIdCol
                             adiv.id = "avg" + (selOrFil || "") + elIdCol
                             const useAvg = (sum/noLen)
-                            sdiv.innerHTML = ('<span>Total: </span><span class="lg-text">' + sum.toLocaleString(undefined, { maximumFractionDigits: 5 }) + "</span>");
-                            adiv.innerHTML = ('<span>Avg: </span><span class="lg-text">' + useAvg.toLocaleString(undefined, { maximumFractionDigits: 2 }) + "</span>");
+                            sdiv.innerHTML = ('<span>Total: </span><span class="lg-text">' + sum.toLocaleString(undefined, { maximumFractionDigits: 2, minimumFractionDigits: (isCurr ? 2 : 0) }) + "</span>");
+                            adiv.innerHTML = ('<span>Avg: </span><span class="lg-text">' + useAvg.toLocaleString(undefined, { maximumFractionDigits: 2, minimumFractionDigits: (isCurr ? 2 : 0) }) + "</span>");
                             inner.appendChild(sdiv)
                             inner.appendChild(adiv)
                             try{
                                 mindiv.id = "min" + (selOrFil || "") + elIdCol
                                 maxdiv.id = "max" + (selOrFil || "") + elIdCol
-                                mindiv.innerHTML = '<span>Min: </span><span class="lg-text">' + Math.min(...numsOnly).toLocaleString(undefined, { maximumFractionDigits: 5 }) + "</span>";
+                                mindiv.innerHTML = '<span>Min: </span><span class="lg-text">' + Math.min(...numsOnly).toLocaleString(undefined, { maximumFractionDigits: 2, minimumFractionDigits: (isCurr ? 2 : 0) }) + "</span>";
                                 maxdiv.innerHTML = '<span>Max: </span><span class="lg-text">' + Math.max(...(tdiv ? numsOnly.filter( function(n, ind) { return ind < (numsOnly.length-1) }) : numsOnly)).
-                                toLocaleString(undefined, { maximumFractionDigits: 5 }) + "</span>";
+                                toLocaleString(undefined, { maximumFractionDigits: 2, minimumFractionDigits: (isCurr ? 2 : 0) }) + "</span>";
                                 inner.appendChild(mindiv)
                                 inner.appendChild(maxdiv)
                             }catch(e){}
@@ -3230,10 +3255,7 @@ deebo.methods = function() {
                                 inner.appendChild(mdiv)
                             if(tdiv)
                                 inner.appendChild(tdiv)
-                            const sym = dataTableService.methods.dataFilSrtTracker[col]?.colCellSymbol
-                            let symCls
-                            if(sym){
-                                symCls = ["$","€","£","¥","₣","₹"].indexOf(sym) > -1 ? "has-symbol-b" : "has-symbol"
+                            if(sym && symCls){
                                 if(sdiv && sdiv.lastElementChild && sdiv.lastElementChild.textContent && /[0-9]+/g.test(sdiv.lastElementChild.textContent)){
                                     sdiv.lastElementChild.setAttribute("data-symbol", sym)
                                     sdiv.lastElementChild.classList.add(symCls);
@@ -3827,7 +3849,7 @@ deebo.methods = function() {
                                 'style="vertical-align:middle">warning</i> Load a Dot Plot at your own risk using a button above.';
                                 return killLg(wmsg)
                             }
-
+                            const dtopts = {year: "2-digit",month: "2-digit", day: "numeric"}
                             //numbers
                             const numArr = data.filter( function(a) { return !!a[dcol] }).map( function(d) { return d[ncol] }).
                             filter( function(a) { return !!a && a >= 0 }).sort( function(a, b) { return (a - b)*-1 });
@@ -3846,7 +3868,7 @@ deebo.methods = function() {
                             let nadded = [];
                             let t = 0
                             for(t; t < ntklen; t++){
-                                const ntkval = nokTickVal[t]?.toLocaleString(undefined, {maximumFractionDigits: 2});
+                                const ntkval = nokTickVal[t]?.toLocaleString(undefined, {maximumFractionDigits: 0});
                                 if(naddedtks.indexOf(ntkval) > -1)
                                     continue
                                 const nmrk = document.createElement("div")
@@ -3864,7 +3886,7 @@ deebo.methods = function() {
                                     continue
                                 const nmrk = document.createElement("div");
                                 nmrk.className = "lg-n-marker-h"
-                                const pct = ((unum-nmmin) / nmrange)
+                                const pct = (Math.max(1, unum-nmmin) / Math.max(1, nmrange))
                                 nmrk.setAttribute("data-perc", pct.toFixed(2))
                                 const usenval = unum?.toLocaleString(undefined, {maximumFractionDigits: 2});
                                 nmrk.textContent = usenval;
@@ -3890,9 +3912,9 @@ deebo.methods = function() {
                             const olen = ordDts.length
                             const yearvals = ordDts.map( function(o) { return typeof o !== "object" ? o : o.getFullYear() })
                             const alloneyr = new Set(yearvals.filter( function(d) { return true })).size < 2;//unique years
-                            let yrReg = new RegExp("sjdkgf", "g")//not gonna replace anything
-                            if(alloneyr)
-                                yrReg = new RegExp("\/" + yearvals[0], "g")
+                            // let yrReg = new RegExp("sjdkgf", "g")//not gonna replace anything
+                            // if(alloneyr)
+                            //     yrReg = new RegExp("\/" + yearvals[0], "g")
                             let dtrange
                             let dtmin; let dtmax;
                             if(typeof ordDts[0] === "object"){
@@ -3922,7 +3944,7 @@ deebo.methods = function() {
                             const dtklen = okDtTks.length
                             for(de; de < dtklen; de++){
                                 const tval = okDtTks[de]
-                                const useDVal = deebo.methods.isADateObject(tval) ? tval.toLocaleDateString().replace(yrReg, "") : tval
+                                const useDVal = deebo.methods.isADateObject(tval) ? tval.toLocaleDateString('en-US', dtopts)/*.replace(yrReg, "")*/ : tval
                                 if(addeddttks.indexOf(useDVal) > -1)
                                     continue
                                 const dmrk = document.createElement("div")
@@ -3935,7 +3957,7 @@ deebo.methods = function() {
                             const ofrag = document.createDocumentFragment()
                             for(m; m < olen; m++){
                                 const oval = ordDts[m]
-                                const useDVal = deebo.methods.isADateObject(oval) ? oval.toLocaleDateString().replace(yrReg, "") : oval
+                                const useDVal = deebo.methods.isADateObject(oval) ? oval.toLocaleDateString('en-US', dtopts)/*.replace(yrReg, "")*/ : oval
                                 if(added.indexOf(useDVal) > -1)
                                     continue
                                 const dmrk = document.createElement("div")
@@ -3959,21 +3981,21 @@ deebo.methods = function() {
                             let r =0
                             let hd =0
                             let y =0
-                            const halfPlot = 4
+                            const halfPlot = 2
                             const mrks = document.querySelectorAll("#" + par.id + " .lg-dt-marker")
                             const mrlen = mrks.length
                             const hmrks = document.querySelectorAll("#" + par.id + " .lg-dt-marker-h")
                             const hmrlen = hmrks.length
-                            const lastdtdv = mrks[mrlen-1].getBoundingClientRect()
-                            const space = (lgbds.right - (lastdtdv.right-lmarg)) - halfPlot
+                             // const lastdtdv = mrks[mrlen-1].getBoundingClientRect()
+                            const space = lgbds.width//(lgbds.right - (lastdtdv.right/*-lmarg*/)) - halfPlot
                             const divby = Math.max(1, (mrlen-1))
                             const mrrgt = Math.ceil(space/divby)//divide space up by count-1 because last gets no marg right
                             for(r; r < mrlen; r++)
                                 mrks[r].style.left = Math.floor(mrrgt*r) + "px";
-                            const m0 = mrks[0].getBoundingClientRect()
-                            const xrange = mrks[mrlen-1].getBoundingClientRect().right - m0.left
+                            // const m0 = mrks[0].getBoundingClientRect()
+                            const xrange = space//mrks[mrlen-1].getBoundingClientRect().right - m0.left
                             for(hd; hd < hmrlen; hd++)
-                                hmrks[hd].style.left = Math.floor(parseFloat(hmrks[hd].getAttribute("data-perc"))*(xrange-(m0.width/2))) + "px";
+                                hmrks[hd].style.left = Math.floor(parseFloat(hmrks[hd].getAttribute("data-perc"))*(xrange/*-(m0.width/2)*/)) + "px";
 
                             const nmrks = document.querySelectorAll("#" + par.id + " .lg-n-marker")
                             const nmrlen = nmrks.length
@@ -3998,15 +4020,15 @@ deebo.methods = function() {
                             //add x label
                             //add plots
                             const maxPtLft = xrange - halfPlot
-                            const maxPtBot = lgbds.height - (halfPlot*3) - 1;
-                            const dtmrWid =mrks[0].getBoundingClientRect().width
+                            const maxPtBot = lgbds.height - (halfPlot*6) - 1;
+                            // const dtmrWid =mrks[0].getBoundingClientRect().width
                             const findDtLft = function(dt) {
                                 let q = 0; let k = 0
-                                const ptval = deebo.methods.isADateObject(dt) ? dt.toLocaleDateString().replace(yrReg, "") : dt
+                                const ptval = deebo.methods.isADateObject(dt) ? dt.toLocaleDateString('en-US', dtopts)/*.replace(yrReg, "")*/ : dt
                                 for(q; q < mrlen; q++){
                                     const dttxt = mrks[q].textContent
                                     if(ptval === dttxt || ptval === mrks[q].getAttribute("data-value"))
-                                        return (parseInt(mrks[q].style.left.replace(/[ ]?(px\%)/g, "")) || 0) + (dtmrWid/2) - halfPlot
+                                        return (parseInt(mrks[q].style.left.replace(/[ ]?(px\%)/g, "")) || 0)/* + (dtmrWid/2)*/ - halfPlot
                                 }
                                 
                                 for(k; k < hmrlen; k++){
@@ -4025,14 +4047,14 @@ deebo.methods = function() {
                                 for(q; q < nmrlen; q++){
                                     const dttxt = nmrks[q].textContent
                                     if(ptval === dttxt || ptval === nmrks[q].getAttribute("data-value"))
-                                        return (lbot - nmrks[q].getBoundingClientRect().bottom) + (nmrHgt/2) - halfPlot/*halfPlot is half the dot*/
+                                        return Math.floor(lbot - nmrks[q].getBoundingClientRect().bottom) + (nmrHgt/2) - halfPlot/*halfPlot is half the dot*/
                                 }
                                 
                                 for(k; k < hnmrlen; k++){
                                     const hnmrk = hnmrks[k]
                                     const dttxt = hnmrk.textContent
                                     if((ptval === dttxt || ptval === hnmrk.getAttribute("data-value")) && hnmrk.getAttribute("data-perc")){
-                                        const totalh = (lgbds.height*(parseFloat(hnmrk.getAttribute("data-perc")) || 0)) + (nmrHgt/2) - halfPlot
+                                        const totalh = Math.floor(lgbds.height*(parseFloat(hnmrk.getAttribute("data-perc")) || 0)) + (nmrHgt/2) - halfPlot
                                         return Math.min(maxPtBot, Math.ceil(totalh))/*halfPlot is half the dot*/
                                     }
                                 }
@@ -4051,7 +4073,7 @@ deebo.methods = function() {
                                         continue
                                     const pt = document.createElement("div")
                                     pt.className = "lg-plot";
-                                    const usedval = deebo.methods.isADateObject(dval[dcol]) ? dval[dcol].toLocaleDateString().replace(yrReg, "") : dval[dcol]
+                                    const usedval = deebo.methods.isADateObject(dval[dcol]) ? dval[dcol].toLocaleDateString('en-US', dtopts)/*.replace(yrReg, "")*/ : dval[dcol]
                                     pt.setAttribute("data-date", usedval)
                                     pt.setAttribute("data-number", dval[ncol].toLocaleString(undefined, {maximumFractionDigits: 2}))
                                     pt.style.left = Math.floor(plft) + "px";
