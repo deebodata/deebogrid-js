@@ -808,6 +808,7 @@ deebo.methods = function() {
                     setTimeout( function() { 
                         deebo.methods.testHideMinBtn()
                         deebo.methods.setColHeaderHgt()
+                        deebo.methods.setHoldingCheckCls()
                         deebo.methods.setRowSelChecksPlacement()
                         dataTableService.methods.setTableBounds()
                     })
@@ -1276,9 +1277,9 @@ deebo.methods = function() {
             handleScrollEnd: function() {
                 if(deebo.methods.showCharts)
                     return;
-                deebo.methods.setRowSelChecksPlacement()
                 setTimeout( function() { 
                     deebo.methods.setColsOnVisScreen()
+                    deebo.methods.setRowSelChecksPlacement()
                     setTimeout(deebo.methods.cleanUpPossibles)
                     setTimeout(deebo.methods.blockEventsInCells, 100)
                 })
@@ -1289,6 +1290,8 @@ deebo.methods = function() {
                 const elProp = prop?.replace(/ /g, deebo.methods.uniSep)
                 cell.className = "data-cell"
                 cell.className += (" data-cell-" + (elProp || "data"))
+                if(prop === dataTableService.methods.firstCol)
+                    cell.className += " holding-check"
                 if(dataTableService.methods.dataFilSrtTracker[prop].minimize)
                     cell.classList.add("col-header-minimized")
                 if(vis)
@@ -2358,21 +2361,21 @@ deebo.methods = function() {
                 blw.id = "belowArea"
                 tbody.appendChild(abv)
                 tbody.appendChild(blw);
+                deebo.methods.aboveHgt = 0
+                deebo.methods.belowHgt = 0
             },
 
             renderCurrData: function(reset, field) {
                 const tbody = document.getElementById("dataTableBody")
                 const tbodyX = tbody.scrollLeft
-                tbody.scrollTop = 0
                 tbody.innerHTML = ""
-                let didXScrl = false;
                 deebo.methods.resetTblBody(tbody)
+                tbody.scrollTop = 0
+                let didXScrl = false;
                 document.getElementById("dataTableChecks").innerHTML = ""
                 if(deebo.methods.rowNumbers)
                     try{ document.getElementById("rowNumBody").innerHTML = ""}catch(e){}
                 let n = 0;
-                deebo.methods.aboveHgt = 0
-                deebo.methods.belowHgt = 0
                 dataTableService.methods.currMapping = {}
                 const defNum = parseInt(dataTableService.methods.defltRHgt.replace(/[ ]?px/g, ""))
                 const init = Math.max(deebo.methods.dTblHeight/defNum);
@@ -2502,7 +2505,6 @@ deebo.methods = function() {
                     deebo.methods.handleFilSDataStr(tRows)
                 }
                 if(len){
-                    setTimeout(deebo.methods.setRowSelChecksPlacement)
                     if(len > init){
                         let total = 0
                         let z = deebo.methods.lastElRowIndex + 1
@@ -2514,10 +2516,13 @@ deebo.methods = function() {
                         deebo.methods.belowHgt = total*defNum
                         blw.style.height = deebo.methods.belowHgt + "px"
                     }
+                    setTimeout( function() { 
+                        deebo.methods.setRowSelChecksPlacement()
+                        deebo.methods.setHoldingCheckCls()
+                    })
                     setTimeout( function() { //add rows that won't render yet
                         deebo.methods.setIdealColWidth(deebo.methods.columnNames, horizLim)
                     }, 250)
-                    deebo.methods.setHoldingCheckCls()
                 }
             },
 
@@ -2538,6 +2543,7 @@ deebo.methods = function() {
                 deebo.methods.clearHiddenCols()
                 deebo.methods.clearSelectedRows()
                 deebo.methods.removeAllFreezeCols()
+                dataTableService.methods.setTableBounds()
                 dataTableService.methods.resetFilSrtTracker()
                 dataTableService.methods.currFilData = dataTableService.methods.mainData.filter( function(d) { return true })
                 deebo.methods.renderCurrData(true, col)
@@ -2646,10 +2652,11 @@ deebo.methods = function() {
                             deebo.methods.addToHiddenCols(col)
                             document.getElementById("btnReset").disabled = false
                             setTimeout( function() { 
+                                dataTableService.methods.setTableBounds()
                                 deebo.methods.setDataRowWidthsOnMinimize(deebo.methods.getAllColWidth(colLen))
                                 setTimeout( function() { 
                                     deebo.methods.setColsOnVisScreen()
-                                    document.getElementById("dataTableBody").scrollBy(1, 0) 
+                                    document.getElementById("dataTableBody").scrollBy(1, 1)
                                 })
                             }, 320)
                         } else {//show it
@@ -2696,7 +2703,9 @@ deebo.methods = function() {
                             }
                             
                             setTimeout( function() { 
+                                dataTableService.methods.setTableBounds()
                                 deebo.methods.setDataRowWidthsOnMinimize(deebo.methods.getAllColWidth(colLen))
+                                document.getElementById("dataTableBody").scrollBy(1, 1)
                             }, 320)
                         }
                         deebo.methods.setHoldingCheckCls()
@@ -2709,36 +2718,25 @@ deebo.methods = function() {
             },
 
             setHoldingCheckCls: function() {
-                if(document.getElementsByClassName("col-header-minimized").length){
-                    const els = document.getElementsByClassName("holding-check")
-                    const len = els.length
-                    for(var i = (len-1); i >= 0; i--)
-                        els[i].classList.remove("holding-check")
-                    let j = 0
-                    const rows = document.getElementsByClassName("data-table-row")
-                    const rlen = rows.length
-                    for(j; j < rlen; j++){
-                        let o = 0
-                        const kids = rows[j].children
-                        const klen = kids.length
-                        for(o; o < klen; o++){
-                            const kid = kids[o]
-                            if(/data-cell/g.test(kid.className) && !kid.classList.contains("col-header-minimized")){
-                                kid.classList.add("holding-check")
-                                break
-                            }
+                const els = document.getElementsByClassName("holding-check")
+                const len = els.length
+                for(var i = (len-1); i >= 0; i--)
+                    els[i].classList.remove("holding-check")
+                let j = 0
+                const rows = document.getElementsByClassName("data-table-row")
+                const rlen = rows.length
+                for(j; j < rlen; j++){
+                    let o = 0
+                    const kids = rows[j].children
+                    const klen = kids.length
+                    for(o; o < klen; o++){
+                        const kid = kids[o]
+                        if(/data-cell/g.test(kid.className) && !kid.classList.contains("col-header-minimized")){
+                            dataTableService.methods.firstCol = deebo.methods.replaceUniSep(deebo.methods.getColFrmClsList(kid, "data-cell-"))
+                            kid.classList.add("holding-check")
+                            break
                         }
                     }
-                }
-            },
-
-            whatsFirstUiCol: function() {
-                let i = 0
-                const els = document.getElementsByClassName("col-header")
-                const len = els.length
-                for(i; i < len; i++){
-                    if(els[i] && !/col-header-minimized/g.test(els[i].className))
-                        return els[i].id.replace(/columnHeader/g, "")
                 }
             },
 
@@ -2782,6 +2780,7 @@ deebo.methods = function() {
                     cols[o].style.width = colWid || deebo.methods.useColWid 
                 }
                 deebo.methods.setColHeaderHgt()
+                setTimeout(deebo.methods.setHoldingCheckCls)
             },
 
             clearSortInds: function() {
@@ -4275,6 +4274,7 @@ dataTableService.methods = function() {
             tblTop: 0,
             tblLeft: 0,
             tblRight: 0,
+            firstCol: "",
             currMapping: {},
             defltRHgt: "50px",
             currFilData: null,
@@ -4858,9 +4858,10 @@ tblDragEvents.methods = function() {
                     deebo.methods.saveTheme({ target: { id: "desTblHeight", value: deebo.methods.dTblHeight } })//force this event
                     setTimeout( function() {
                         dataTableService.methods.setTableBounds()
-                        deebo.methods.setRowSelChecksPlacement()
-                        if(!deebo.methods.showCharts)
+                        if(!deebo.methods.showCharts){
                             document.getElementById("dataTableBody").scrollBy(0, 1)
+                            setTimeout(function() { deebo.methods.setRowSelChecksPlacement() })
+                        }
                     })
                 }catch(err){}
             },

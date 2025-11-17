@@ -590,7 +590,6 @@ button:disabled,input:disabled,select:disabled{
 .selfil-div{
     cursor: pointer;
     text-align: left;
-    padding: 11px 7px;
     border-bottom: 1px solid var(--grid-color);
 }
 
@@ -603,8 +602,11 @@ button:disabled,input:disabled,select:disabled{
 }
 
 .selfil-div label{
+    width: 100%;
     font-size: 15px;
     cursor: pointer;
+    padding: 11px 0;
+    display: inline-block
 }
 
 .selfil-div label input[type=checkbox]{
@@ -656,7 +658,7 @@ button:disabled,input:disabled,select:disabled{
 
 .data-cell{
     width:125px;
-    padding: 11px 6px 11px 13px;
+    padding: 11px 6px 11px 17px;
     overflow:auto;
     font-size: 15px;
     word-wrap: break-word;
@@ -673,35 +675,18 @@ button:disabled,input:disabled,select:disabled{
     outline-width: 0;
 }
 
-.data-table-row .data-cell:first-child, .holding-check{
-    padding-left: 33px;
+.holding-check{
+    padding-left: 44px;
 }
 
 .data-cell-riiight{
-    padding: 11px 15px 11px 6px;
+    padding: 11px 17px 11px 6px;
     justify-content: right
 }
 
 .data-cell-ceeenter{
     padding: 11px 6px;
     justify-content: center !important
-}
-
-.dc-no-bord{
-    border-width: 0 !important;
-    border-right: none;
-    border-bottom: none;
-    box-shadow: none !important;
-    -webkit-box-shadow: none !important;
-    -moz-box-shadow: none !important;
-}
-
-.data-cell:first-child, .holding-check{
-    padding-left: 7px;
-}
-
-.data-row-selected .data-cell:first-child, .data-row-selected .holding-check, .data-row-selected .data-cell:first-child, .data-row-selected .holding-check{
-    max-width: 76%;
 }
 
 .data-cell img{
