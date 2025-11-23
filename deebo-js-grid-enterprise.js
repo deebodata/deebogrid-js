@@ -601,6 +601,13 @@ deebo.methods = function() {
                 }
             },
 
+            clearAllFocused: function() {//for editing
+                const els = document.getElementsByClassName("focused-el")
+                const len = els.length
+                for(var i = (len-1); i >= 0; i--)
+                    els[i].classList.remove("focused-el")
+            },
+
             blockEventsInCells: function() {
                 const cImgs = document.querySelectorAll(".data-cell img")
                 const cAnc = document.querySelectorAll(".data-cell a")
@@ -1031,6 +1038,8 @@ deebo.methods = function() {
                 const mdIndx = e.target?.getAttribute("data-index") || e.target?.parentElement?.getAttribute("data-index")//data-table-row
                 deebo.methods.currEditIndex = mdIndx
                 const cell = /data-cell/g.test(e.target.className) ? e.target : e.target.firstElementChild;
+                const ddReClick = cell.classList.contains("focused-el")
+                deebo.methods.clearAllFocused()
                 if(cell){//needs validation
                     const elProp = deebo.methods.getColFrmClsList(cell, "data-cell-")
                     const col = deebo.methods.replaceUniSep(elProp)
@@ -1040,6 +1049,14 @@ deebo.methods = function() {
                     (dataTableService.methods.dataFilSrtTracker[col].selDDVals && dataTableService.methods.dataFilSrtTracker[col].selDDVals.length))){
                         deebo.methods.currEditCol = col
                         deebo.methods.handleValidatedCellEditFocus(cell, type, cell.textContent)
+                        if(dataTableService.methods.dataFilSrtTracker[col].selDDVals){//only for sel dds
+                            if(ddReClick){
+                                cell.blur()
+                                return deebo.methods.clearAllFocused()
+                            }
+                            setTimeout( function() { cell.focus() }, 25)
+                            setTimeout( function() { cell.classList.add("focused-el") }, 150)
+                        }
                     }
                 }
             },
@@ -1120,6 +1137,7 @@ deebo.methods = function() {
                 const valEd = document.getElementById("validatedEdit")
                 valEd.innerHTML = ""
                 valEd.classList.add("invisible")
+                setTimeout(deebo.methods.clearAllFocused)
             },
 
             emitEdit: function(event) {

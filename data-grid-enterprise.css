@@ -631,10 +631,10 @@ button:disabled,input:disabled,select:disabled{
 }
 
 .selfil-div label{
-    width: 100%;
+    width: calc(100% - 22px);
     font-size: 15px;
     cursor: pointer;
-    padding: 11px 0;
+    padding: 11px;
     display: inline-block
 }
 
@@ -700,8 +700,12 @@ button:disabled,input:disabled,select:disabled{
     border-bottom:1px solid var(--grid-color);
 }
 
-.data-cell:focus{
-    outline-width: 0;
+input.edit-input{
+    border-radius: 0;
+}
+
+.data-cell:focus, input.edit-input:focus{
+    outline: 1px solid #00a8f3;
 }
 
 .holding-check{
