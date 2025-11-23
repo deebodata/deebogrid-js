@@ -2701,6 +2701,7 @@ deebo.methods = function() {
                     tRows.textContent = dataTableService.methods.currFilData.length.toLocaleString(undefined, { maximumFractionDigits: 0 })
                     deebo.methods.handleFilSDataStr(tRows)
                 }
+                dataTableService.methods.mapperWorkerId += 1//a reset but needs to incr so prev don't affect mapping 
                 if(len){
                     if(len > init){
                         let total = 0
@@ -2712,6 +2713,21 @@ deebo.methods = function() {
                         }
                         deebo.methods.belowHgt = total*defNum
                         blw.style.height = deebo.methods.belowHgt + "px"
+                        if(!reset){
+                            if (typeof Worker !== 'undefined' && deebo.methods.workerUrl !== "http://127.0.0.1:8080/worker.js") {
+                                try{
+                                    // Create a new
+                                    let worker
+                                    worker = new Worker(deebo.methods.workerUrl);
+                                    worker.onmessage = function({ data }) {//{ id: data.id, map: {} }
+                                        if(dataTableService.methods.mapperWorkerId === data.id)
+                                            dataTableService.methods.currMapping = {...data.map}
+                                    };
+                                    if(worker)
+                                        worker.postMessage({id: dataTableService.methods.mapperWorkerId,  main: dataTableService.methods.mainData, curr: dataTableService.methods.currFilData});
+                                }catch(e){}
+                            }
+                        }
                     }
                     setTimeout( function() { 
                         deebo.methods.setRowSelChecksPlacement()
@@ -2722,6 +2738,8 @@ deebo.methods = function() {
                     }, 250)
                 }
             },
+
+            workerUrl: "http://127.0.0.1:8080/worker.js",
 
             resetCurrentData: function(event, col) {
                 dataTableService.methods.sortOrder = []
@@ -4474,6 +4492,7 @@ dataTableService.methods = function() {
             tblRight: 0,
             firstCol: "",
             currMapping: {},
+            mapperWorkerId: 1,
             defltRHgt: "50px",
             currFilData: null,
             isFiltering: false,

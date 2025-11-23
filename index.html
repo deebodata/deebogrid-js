@@ -1,4 +1,5 @@
 <head>
+    <title>Javascript Data Grid</title>
     <link rel="stylesheet" href="./data-grid-enterprise.css">
 </head>
 <body>
@@ -62,7 +63,7 @@
         xhr.onreadystatechange = function() {
             if(xhr.readyState === 4){
                 try{
-                    let xhrdata = JSON.parse(xhr.responseText)
+                    let xhrdata = JSON.parse(xhr.responseText)["result"]
                     if(xhr.status === 200){
                         xhrdata = deebo.methods.convertNeededCols(xhrdata)
                         dataTableService.methods.mainData = xhrdata.filter( function(d) { return true })
