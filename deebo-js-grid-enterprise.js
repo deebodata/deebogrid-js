@@ -681,10 +681,12 @@ deebo.methods = function() {
                 }
             },
 
-            setLoading: function() {
+            setLoading: function(err) {
                 const tbody = document.getElementById("dataTableBody")
+                if(err)
+                    tbody.removeChild(document.getElementsByClassName("data-table-row")[0])
                 const lrow = document.createElement("div")
-                deebo.methods.styleEmptyFilDataRow(lrow, tbody, null, "Loading...")
+                deebo.methods.styleEmptyFilDataRow(lrow, tbody, null, (err || "Loading..."))
                 tbody.appendChild(lrow)
             },
 
@@ -870,6 +872,8 @@ deebo.methods = function() {
                     if(allNumData && !yearCol && !bitData)//num data
                         continue
                     const dSet =new Set(colData)
+                    if(dSet.size >= colData.filter( function(d) { return !!d }).length)
+                        continue//means values are all unique so likely not dropdown material
                     let arrFrmSet = []
                     dSet.forEach( function(v) { arrFrmSet.push(v) })                         
                     const doSels = dLen < 100 ? 2 : ((dLen >= 100 && dLen < 500) ? 10 : 15)
@@ -2116,6 +2120,28 @@ deebo.methods = function() {
                 } catch(e){ return word }
             },
 
+            doBigData: function(num) {
+                try{
+                    let str = num ? num.toLocaleString(undefined, { maximumFractionDigits: 1 }).split(".")[0] : '0'
+                    if(num){
+                        let arr = str.split(",")
+                        let dec;
+                        if(arr.length > 0)
+                            dec = arr[1].substring(0, 1)
+                        str = str.
+                        replace(/,\d{3},\d{3},\d{3}/, (dec === "0" ? "B" : ("." + dec + "B"))).
+                        replace(/,\d{3},\d{3}/, (dec === "0" ? "M" : ("." + dec + "M"))).
+                        replace(/,\d{3}/, (dec === "0" ? "K" : ("." + dec + "K")))
+                    }
+                    return str
+                } catch(e){
+                    return num ? num.toLocaleString(undefined, { maximumFractionDigits: 1 }).
+                    replace(/,\d{3},\d{3},\d{3}/,"B").
+                    replace(/,\d{3},\d{3}/,"M").
+                    replace(/,\d{3}/,"K") : '0'
+                }
+            },
+
             mystartsWith: function(str, query) {
                 try{
                     var qLen = query.length
@@ -3326,12 +3352,15 @@ deebo.methods = function() {
             },
 
             getDataInsights: function(data, cols, parentId, selOrFil) {
-                let i = 0; let r =0;
+                let i = 0; let r =0; let o = 0;
                 let pieCharts = []
                 let dtCols = [];
                 let numCols = [];
+                let okBarGraphs = []
+                let useableCols = []
+                let hasNoData = []
                 cols = cols.filter( function(c) { return !deebo.methods.idCol(c) })
-                const len = cols.length
+                let len = cols.length
                 const dLen = data.length
                 const wid = document.getElementById("dataTableBody").getBoundingClientRect().width//window.innerWidth
                 const insightCols = wid < 1024 ? 2 : 3
@@ -3352,6 +3381,43 @@ deebo.methods = function() {
                     deebo.methods.makeCloseSelInsightsBtn(h2)
                     el.appendChild(h2)
                 }
+                for(o; o < len; o++){
+                    const col = cols[o]
+                    const colData = data.map( function(d) { return d[col] })
+                    if(colData.every( function(d) { return !d })){
+                        hasNoData.push(col);
+                        continue;
+                    }
+                    const yearCol = /(year|yr|fy)/g.test(col?.toLocaleLowerCase())
+                    const allNumData = colData.every( function(d) { return !d || (d && typeof d === "number") })
+                    let bitData;
+                    if(allNumData)
+                        bitData = colData.every( function(d) { return !d || d === 1 || d === 0 })
+                    if(allNumData && !yearCol && !bitData){//num data
+                        numCols.push(col);
+                    } 
+                }
+                const nclen = numCols.length
+                if(nclen){//if any num cols, see if you can do a bar graph
+                    for(const prop in dataTableService.methods.dataFilSrtTracker){
+                        const trkr = dataTableService.methods.dataFilSrtTracker[prop]
+                        if(trkr && trkr.selDDVals && trkr.selDDVals.length)
+                            okBarGraphs.push(prop)
+                    }
+                    if(okBarGraphs.length){
+                        let c= 0; let x = 0
+                        for(c; c < len; c++){
+                            const useC = cols[c]
+                            useableCols.push(useC)
+                            if(okBarGraphs.indexOf(useC) > -1){
+                                for(x; x < nclen; x++)
+                                    useableCols.push(useC + dataTableService.methods.bgSep + numCols[x])
+                                x = 0;
+                            }
+                        }
+                    }
+                } else { useableCols = cols.filter( function(c) { return c }) }
+                len = useableCols.length
                 const scrlCont = document.createElement("div")
                 scrlCont.className = "sel-ins-scrl-cont"
                 const rLen = Math.ceil(len/insightCols)
@@ -3363,10 +3429,10 @@ deebo.methods = function() {
                 el.appendChild(scrlCont)
                 for(i; i < len; i++){
                     try{
-                        const col = cols[i]
+                        const col = useableCols[i]
                         const elIdCol = col.replace(/ /g, deebo.methods.uniSep)
-                        const colData = data.map( function(d) { return (d && typeof d === "object") ? d[col] : d })
-                        if(colData.every( function(d) { return !d }))
+                        const colData = data.map( function(d) { return d[col] })
+                        if(hasNoData.indexOf(col) > -1)
                             continue;
                         let whichRow = document.getElementsByClassName("insight-field-row")[Math.floor(i/insightCols)]
                         if(forSelRows)
@@ -3378,17 +3444,33 @@ deebo.methods = function() {
                         const div = document.createElement("div")
                         const inner = document.createElement("div")
                         const name = document.createElement("h3")
-                        div.id = ((selOrFil || "") + "insField" + elIdCol)
+                        const useId = ((selOrFil || "") + "insField" + elIdCol)
+                        div.id = useId
                         div.className = "insight-field"
                         if(wid >= 760)
                             inner.style.width = "85%"
                         inner.style.paddingTop = "0"
                         name.className = "lg-text"
+                        name.classList.add("semi-heavy")
                         name.style.marginBottom = "9px"
-                        name.textContent = deebo.methods.sanitizeUi(deebo.methods.titleCase(col))
                         inner.appendChild(name)
                         div.appendChild(inner)
                         whichRow.appendChild(div)
+                        const reg = new RegExp(dataTableService.methods.bgSep, "g")
+                        if(reg.test(col)){
+                            const bgCols = col.split(dataTableService.methods.bgSep)
+                            const strCol = bgCols[0]
+                            const numCol = bgCols[1]
+                            const valsLen = dataTableService.methods.dataFilSrtTracker[strCol]?.selDDVals?.filter( function(g) {return g.value !== "(Select All)"}).length || 0;
+                            const doAvg = dLen <= valsLen ? "" : "Avg. ";
+                            name.classList.add("center")
+                            name.textContent = doAvg + deebo.methods.titleCase(numCol) + " by " + deebo.methods.titleCase(strCol);
+                            const bgData = data.filter( function(d) { return d[numCol] === 0 || !!d[numCol] }).
+                            map( function(d) { return ({strColumn: (d[strCol] || "N/A"), numColumn: d[numCol]})} );
+                            setTimeout( function() { deebo.methods.buildBarGraphWithTwoCols(strCol, numCol, bgData, inner, useId); })
+                            continue
+                        }
+                        name.textContent = deebo.methods.sanitizeUi(deebo.methods.titleCase(col))
                         let mdiv
                         const yearCol = /(year|yr|fy)/g.test(col?.toLocaleLowerCase())
                         const allNumData = colData.every( function(d) { return !d || (d && typeof d === "number") })
@@ -3443,7 +3525,6 @@ deebo.methods = function() {
                             let noLen = numsOnly.length
                             let sum = numsOnly.reduce( function(acc, curr) { return acc + curr }, 0)
                             const lastNum = numsOnly[numsOnly.length-1]
-                            numCols.push(col);
                             if(typeof lastNum === "number" && ((sum - lastNum === lastNum) || (Math.abs(sum - lastNum*2) < 0.02))){//check that a total column is already there
                                 sum -= lastNum
                                 noLen -= 1
@@ -3607,6 +3688,153 @@ deebo.methods = function() {
                 }
                 return most
             },
+
+            maxBarWid: 90,
+
+            //bar graph
+            buildBarGraphWithTwoCols: function(strCol, numCol, bgData, div, parId) {
+                let avgData = []
+                let shortData = []
+                let xlbls = []
+                const icont = document.createElement("div")
+                const barY = document.createElement("div")
+                const barXC = document.createElement("div")
+                const barCt = document.createElement("div")
+                const xlbl = document.createElement("div")
+                icont.className = "inner-bg-contain"
+                barXC.className = "bar-graph-x-cols"
+                barY.className = "bar-graph-y-cols"
+                barCt.className = "bar-graph-real-vals"
+                icont.appendChild(barY)
+                icont.appendChild(barCt)
+                icont.appendChild(barXC)
+                div.appendChild(icont)
+                div.appendChild(xlbl)
+                const vals = dataTableService.methods.dataFilSrtTracker[strCol].selDDVals.filter( function(g) {return g.value !== "(Select All)"})
+                const vlen = vals.length
+                const makeXLbl = function(val) {
+                    const xlbl = document.createElement("div")
+                    xlbl.className = "bg-ind-var"
+                    xlbl.className += " center";
+                    xlbl.textContent = val
+                    xlbl.onmouseenter = deebo.methods.barGLblMouseIn
+                    xlbl.onmouseleave = deebo.methods.barGLblMouseOut
+                    barXC.appendChild(xlbl)
+                    xlbls.push(val)
+                }
+                if(bgData.length > vlen){//do the avg per strcolumn
+                    let o = 0
+                    for(o; o < vlen; o++){
+                        const val = vals[o].value
+                        const justVal = bgData.filter( function(d) {return d["strColumn"] === val}).map( function(d) {return d["numColumn"]} )
+                        const jvlen = justVal.length
+                        if(jvlen){
+                            const avgobj = { x: val, y: (justVal.reduce( function(acc, curr) {return (acc += curr)} , 0)/jvlen) }
+                            avgData.push(avgobj)
+                            makeXLbl(val)
+                        }
+                    }
+                    const justNull = bgData.filter( function(d) { return d["strColumn"] === "N/A"}).map( function(d) {return d["numColumn"]} )
+                    const jlen = justNull.length
+                    if(jlen){
+                        avgData.push({ x: "N/A", y: (justNull.reduce( function(acc, curr) { return (acc += curr)} , 0)/jlen) })
+                        makeXLbl("N/A")
+                    }
+                } else {
+                    let o = 0
+                    for(o; o < vlen; o++){
+                        const val = vals[o].value
+                        const justVal = bgData.filter( function(d) {return d["strColumn"] === val}).map( function(d) {return d["numColumn"]} )
+                        const avgobj = { x: val, y: justVal }
+                        shortData.push(avgobj)
+                        makeXLbl(val)
+                    }
+                }
+                const nums = avgData.length ? avgData.map( function(d) {return d["y"] }) : shortData.map( function(d) {return d["y"] });
+                let srtNums = nums.sort( function(a, b) {return a - b > 0 ? 1 : -1} )
+                const max = srtNums[(nums.length-1)]
+                let lbly = deebo.methods.sanitizeUi(numCol)
+                const sym = dataTableService.methods.dataFilSrtTracker[numCol].colCellSymbol
+                if(sym)
+                    lbly += " ("+sym+")";
+                icont.setAttribute("data-yaxis", lbly)
+                xlbl.className = "bar-graph-x-label"
+                xlbl.textContent = deebo.methods.sanitizeUi(deebo.methods.titleCase(strCol))
+                deebo.methods.buildYAxisBGVals(max, barY)
+                setTimeout( function() { 
+                    const xlen = xlbls.length
+                    const yWid = barY.getBoundingClientRect().width
+                    const offY = Math.ceil(yWid+5);
+                    const useIncr = Math.min(deebo.methods.maxBarWid, (Math.floor((icont.getBoundingClientRect().width-offY)/xlen)))
+                    deebo.methods.buildXAxisBGVals((avgData.length ? avgData : shortData), max, useIncr, barY, barCt);
+                    setTimeout( function() { 
+                        barXC.style.marginLeft = offY + "px";
+                        barCt.style.marginLeft = offY + "px";
+                        barCt.style.padding = "0"
+                        let x = 0
+                        const xbs = document.querySelectorAll("#" + parId + " .bg-ind-var")
+                        for(x; x < xlen; x++)
+                            xbs[x].style.width = useIncr + "px"
+                    })
+                })
+            },
+
+            buildXAxisBGVals: function(data, max, useIncr, yAx, barC) {
+                let i = 0
+                const len = data.length
+                let background;
+                const maxHgt = yAx.getBoundingClientRect().height
+                const whiteTxt = ["white", "#FFFFFF", "#ffffff", "rgb(255, 255, 255)", "rgb(255,255,255)"];
+                if(deebo.methods.themeColor1 && whiteTxt.indexOf(deebo.methods.themeColor1) < 0)
+                    background = deebo.methods.themeColor1;
+                for(i; i < len; i++){
+                    try{
+                        const item = data[i]
+                        const bhgt = item["y"]/max;
+                        const strVal = item["y"].toLocaleString(undefined, {maximumFractionDigits: 0})
+                        const gab = document.createElement("div")
+                        const barCt = document.createElement("div")
+                        gab.style.width = useIncr + "px";
+                        gab.style.left = ((i*useIncr) + "px")
+                        gab.className = "graph-actual-bar"
+                        gab.setAttribute("data-value", strVal)
+                        barCt.style.height = (Math.floor(bhgt*maxHgt) + "px");
+                        if(background)
+                            barCt.style.background = background;
+                        gab.appendChild(barCt)
+                        barC.appendChild(gab)
+                    }catch(e){}
+                }
+            },
+
+            buildYAxisBGVals: function(max, div) {
+                // let diff = max - min
+                const numPlots = 5
+                const incr = max/(numPlots-1)
+                for(let i = (numPlots-1); i >= 0; i--){
+                    try{
+                        const inc = i*incr
+                        let useVal = inc//(min + inc)
+                        if(i === 0)
+                            useVal = 0//min
+                        if(i === (numPlots-1))
+                            useVal = max
+                        const nt = document.createElement("div")
+                        nt.className = "bg-dep-var"
+                        nt.textContent = useVal < 1000 ? useVal.toLocaleString(undefined, {maximumFractionDigits: 0}) : deebo.methods.doBigData(useVal);
+                        div.appendChild(nt)
+                    }catch(e){}
+                }
+            },
+
+            barGLblMouseIn: function(e) {
+                try{ e.target.classList.add("lbl-show") }catch(e){}
+            },
+
+            barGLblMouseOut: function(e) {
+                try{ e.target.classList.remove("lbl-show") }catch(e){}
+            },
+            //bar graph
 
             //pie graph
             cleanUpPieLayovers: function() {
@@ -4496,6 +4724,7 @@ dataTableService.methods = function() {
             defltRHgt: "50px",
             currFilData: null,
             isFiltering: false,
+            bgSep: "__forbargX",
             currSelRows: [],//just be an index of mainData
             visibleCols: [],//string arr
             displayOnlySelRows: false,

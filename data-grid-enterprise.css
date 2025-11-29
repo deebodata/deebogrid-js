@@ -1031,6 +1031,117 @@ input.edit-input{
     padding: 0 !important;
 }
 
+.inner-bg-contain{
+    position: relative;
+    box-sizing: border-box;
+}
+
+.inner-bg-contain::before{
+    top: 50%;
+    left: -48px;
+    font-size: x-large;
+    position: absolute;
+    display: block;
+    color: var(--grid-color);
+    content: attr(data-yaxis);
+    transform: rotate(-90deg);
+}
+
+.inner-bg-contain div{
+    padding: 0;
+}
+
+.bar-graph-y-cols{
+    z-index: 5;
+    margin-left: 5px;
+    overflow: hidden;
+    position: relative;
+    vertical-align: top;
+    box-sizing: border-box;
+    display: inline-block;
+    border-right: 1px solid var(--grid-color);
+}
+
+.bar-graph-real-vals{
+    position: relative;
+}
+
+.bar-graph-x-cols{
+    white-space: nowrap;
+    overflow-x: visible;
+    padding: 11px 0 0 0 !important;
+    border-top: 1px solid var(--grid-color);
+}
+
+.bg-dep-var{
+    overflow: hidden;
+    height: 70px;
+    width: 100%;
+    display: flex;
+    padding: 0 5px;
+    font-size: small;
+    align-items: end;
+    font-weight: 500;
+    justify-content: right;
+    box-sizing: border-box;
+}
+
+.bg-dep-var div{
+    word-break:break-all;
+    color: var(--accent-color);
+}
+
+.bg-dep-var:first-of-type{
+    height: unset;
+}
+
+.graph-actual-bar{
+    bottom: 0;
+    position: absolute;
+    align-items: center;
+    background: white;
+}
+
+.graph-actual-bar div{/*these divs are the actual colored bars*/
+    width: 80%;
+    margin: 0 auto;
+    background: #afafaf;
+}
+
+.graph-actual-bar:hover::before{
+    display: block;
+    text-align: center;
+    font-size: small;
+    margin: -15px 0 0 -5px;
+    white-space: nowrap;
+    background: white;
+    padding: 2px;
+    content: attr(data-value);
+}
+
+ .bg-ind-var{
+    font-size: small;
+    font-weight: 500;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    display: inline-block;
+    color: var(--accent-color);
+    transform: rotate(45deg);
+}
+
+.lbl-show{
+    overflow: visible !important;
+    transition: overflow 0.2s ease;
+}
+
+.bar-graph-x-label{
+    font-size: x-large;
+    font-weight: 500;
+    padding: 17px 0 0 0 !important;
+    text-align: center;
+    overflow-x: hidden;
+}
+
 .ins-even-dist-ct{
     font-size: 24px;
     font-weight: 500;

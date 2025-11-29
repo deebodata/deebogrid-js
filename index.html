@@ -63,7 +63,7 @@
         xhr.onreadystatechange = function() {
             if(xhr.readyState === 4){
                 try{
-                    let xhrdata = JSON.parse(xhr.responseText)["result"]
+                    let xhrdata = JSON.parse(xhr.responseText)//["result"]
                     if(xhr.status === 200){
                         xhrdata = deebo.methods.convertNeededCols(xhrdata)
                         dataTableService.methods.mainData = xhrdata.filter( function(d) { return true })
@@ -71,7 +71,7 @@
                         dataTableService.methods.mainDataLen = dataTableService.methods.mainData.length
                         deebo.methods.buildInitUiDataTable(xhrdata, null, null)
                     }
-                }catch(e){}
+                }catch(e){ deebo.methods.setLoading(e.message) }
             }
         }
         xhr.timeout = 10000
