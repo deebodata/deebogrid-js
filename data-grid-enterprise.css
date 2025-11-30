@@ -441,7 +441,6 @@ button:disabled,input:disabled,select:disabled{
 
 .data-row-selected{
     background:#d6d6d6 !important;
-    border-bottom: 1px solid gray;
 }
 
 .select-row-check{
@@ -891,6 +890,7 @@ input.edit-input{
     background: #e9e9e9;
     box-sizing: border-box;
     border-bottom: 1px solid var(--accent-color);
+    border-right: 1px solid var(--accent-color);
     box-shadow:0 -1px 3px 1px var(--grid-color);
     -moz-box-shadow:0 -1px 3px 1px var(--grid-color);
     -webkit-box-shadow:0 -1px 3px 1px var(--grid-color)
@@ -1051,10 +1051,25 @@ input.edit-input{
     padding: 0;
 }
 
+.stat-opt-contain{
+    margin-bottom: 27px;
+}
+
+.stat-opt-btn{
+    width: 100%;
+    padding-bottom: 3px;
+    box-sizing: border-box;
+}
+
+.stat-opt-btn-active{
+    font-weight: bold;
+    border-bottom: 2px solid var(--grid-color);
+}
+
 .bar-graph-y-cols{
     z-index: 5;
     margin-left: 5px;
-    overflow: hidden;
+    overflow: visible;
     position: relative;
     vertical-align: top;
     box-sizing: border-box;
@@ -1079,9 +1094,9 @@ input.edit-input{
     width: 100%;
     display: flex;
     padding: 0 5px;
-    font-size: small;
+    font-size: 14px;
     align-items: end;
-    font-weight: 500;
+    font-weight: 600;
     justify-content: right;
     box-sizing: border-box;
 }
@@ -1092,7 +1107,26 @@ input.edit-input{
 }
 
 .bg-dep-var:first-of-type{
-    height: unset;
+    height: 17px !important;
+    position: relative;
+    overflow: visible !important;
+}
+
+.bg-dep-var:first-of-type::before{
+    top: -7px;
+    overflow: visible;
+    position: absolute;
+    content: attr(data-number);
+    visibility: visible !important
+}
+
+.bg-dep-var:last-of-type{
+    overflow: visible !important;
+}
+
+.bg-dep-var:last-of-type::after{
+    content: attr(data-number);
+    margin-bottom: -7px;
 }
 
 .graph-actual-bar{
@@ -1103,20 +1137,27 @@ input.edit-input{
 }
 
 .graph-actual-bar div{/*these divs are the actual colored bars*/
+    height: 0;
     width: 80%;
     margin: 0 auto;
     background: #afafaf;
+    transition: height 0.3s ease-out;
+}
+
+.graph-actual-bar:hover{
+    z-index: 10;
 }
 
 .graph-actual-bar:hover::before{
+    width: 150px;
     display: block;
-    text-align: center;
+    font-weight: 500;
     font-size: small;
-    margin: -15px 0 0 -5px;
     white-space: nowrap;
     background: white;
-    padding: 2px;
+    padding: 1px 2px 3px 2px;
     content: attr(data-value);
+    border-radius: 3px;
 }
 
  .bg-ind-var{
