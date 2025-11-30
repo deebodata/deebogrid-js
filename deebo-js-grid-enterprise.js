@@ -1684,13 +1684,13 @@ deebo.methods = function() {
                         h += 1
                     }
                     bel.before(frag)
-                    if(ahToAdd){
-                        deebo.methods.aboveHgt += ahToAdd
-                        abv.style.height = Math.max(0, deebo.methods.aboveHgt) + "px"
-                    }
                     if(bhToSub){
                         deebo.methods.belowHgt -= bhToSub
                         bel.style.height = Math.max(0, deebo.methods.belowHgt) + "px"
+                    }
+                    if(ahToAdd){
+                        deebo.methods.aboveHgt += ahToAdd
+                        abv.style.height = Math.max(0, deebo.methods.aboveHgt) + "px"
                     }
                     deebo.methods.setLastRowIndex()
                 }
@@ -3379,7 +3379,7 @@ deebo.methods = function() {
                         const filInf = deebo.methods.getAllFilSrtInfo()?.replace(/Filtered By:/g, "filtered by").
                         replace(/ \&bull; Sorted By/g, ", Sorted By").replace(/ \&bull; /g, " ")
                         h2.innerHTML = ("Data Insights " + ("for <b>" + (dLen).toLocaleString(undefined, {maximumFractionDigits:0}) + 
-                                       "</b> row" + (dLen === 1 ? " " : "s ")) + filInf?.split(" Sorted By")[0].trim())
+                                       "</b> row" + (dLen === 1 ? " " : "s ")) + filInf?.split(", Sorted By")[0].trim())
                     }
                     h2.className = "center"
                     deebo.methods.makeCloseSelInsightsBtn(h2)
@@ -5447,8 +5447,13 @@ tblDragEvents.methods = function() {
                     setTimeout( function() {
                         dataTableService.methods.setTableBounds()
                         if(!deebo.methods.showCharts){
-                            document.getElementById("dataTableBody").scrollBy(0, 1)
-                            setTimeout(function() { deebo.methods.setRowSelChecksPlacement() })
+                            const dtb = document.getElementById("dataTableBody")
+                            dtb.scrollBy(0, 1)
+                            setTimeout(function() { 
+                                deebo.methods.setRowSelChecksPlacement()
+                                dtb.scrollBy(0, -1)
+                                dtb.scrollBy(0, 1)
+                            })
                         }
                     })
                 }catch(err){}

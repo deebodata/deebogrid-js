@@ -1052,6 +1052,7 @@ input.edit-input{
 }
 
 .stat-opt-contain{
+    white-space: nowrap;
     margin-bottom: 27px;
 }
 
