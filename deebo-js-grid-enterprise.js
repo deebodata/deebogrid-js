@@ -842,7 +842,27 @@ deebo.methods = function() {
                         deebo.methods.setIdealColWidth(cols, horizLim)
                         deebo.methods.setColsOnVisScreen()
                     }, 250)
+                    deebo.methods.getPrimaryKey(cols)
                 } catch(e) { }                
+            },
+
+            getPrimaryKey: function(cols) {
+                let i = 0
+                const len = cols.length
+                for(i; i < len; i++){
+                    const col = cols[i]
+                    if(deebo.methods.idCol(col)){
+                        const colData = dataTableService.methods.mainData.map( function(d) { return d[col] })
+                        if(colData && !colData.some( function(c) { return !c })){//no null vals
+                            const map = new Set(colData)
+                            if(map.size === dataTableService.methods.mainDataLen){//all unique vals
+                                dataTableService.methods.primaryKey = col
+                                return dataTableService.methods.primaryKey
+                            }
+                        }
+                    }
+                }
+                return ""
             },
 
             setIdealColWidth: function(cols, horizLim) {
@@ -2752,7 +2772,7 @@ deebo.methods = function() {
                                             dataTableService.methods.currMapping = {...data.map}
                                     };
                                     if(worker)
-                                        worker.postMessage({id: dataTableService.methods.mapperWorkerId,  main: dataTableService.methods.mainData, curr: dataTableService.methods.currFilData});
+                                        worker.postMessage({id: dataTableService.methods.mapperWorkerId, pk: dataTableService.methods.primaryKey,  main: dataTableService.methods.mainData, curr: dataTableService.methods.currFilData});
                                 }catch(e){}
                             }
                         }
@@ -3051,6 +3071,11 @@ deebo.methods = function() {
             },
 
             findObjIndxInData: function(item, which) {
+                if(dataTableService.methods.primaryKey){
+                    return dataTableService.methods[(which || "mainData")].indexOf( dataTableService.methods[(which || "mainData")].find( function(d) { 
+                        return d[dataTableService.methods.primaryKey] === item[dataTableService.methods.primaryKey]
+                    }) );
+                }
                 let i = 0; let eq = 0;
                 const propLen = Object.keys(item).length
                 const len = dataTableService.methods[(which || "mainData")]?.length
@@ -4861,6 +4886,7 @@ dataTableService.methods = function() {
             tblLeft: 0,
             tblRight: 0,
             firstCol: "",
+            primaryKey: "",
             currMapping: {},
             mapperWorkerId: 1,
             defltRHgt: "50px",
@@ -5158,7 +5184,7 @@ dataTableService.methods = function() {
                 return false
             },
 
-            easyFilter: function(val, dataI, sortOrder) {//only for non prim tables
+            easyFilter: function(val, dataI, sortOrder) {
                 const initData = !dataTableService.methods.displayOnlySelRows ? dataI :
                 dataI.filter( function(d, ind) { return dataTableService.methods.currSelRows.indexOf(ind) > -1 })
                 let dataM = dataTableService.methods.allDataFilter(val, initData)
