@@ -63,7 +63,7 @@
         xhr.onreadystatechange = function() {
             if(xhr.readyState === 4){
                 try{
-                    let xhrdata = JSON.parse(xhr.responseText)//["result"]
+                    let xhrdata = JSON.parse(xhr.responseText)["result"]
                     if(xhr.status === 200){
                         xhrdata = deebo.methods.convertNeededCols(xhrdata)
                         dataTableService.methods.mainData = xhrdata.filter( function(d) { return true })

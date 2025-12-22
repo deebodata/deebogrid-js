@@ -194,6 +194,15 @@ body{
     font-weight: 500;
 }
 
+.success{
+    color:green;
+    font-weight: 500;
+}
+
+.neutral{
+    color: var(--accent-color);
+}
+
 #topLevelDataFilter{
     float: left;
     padding: 7px 5px;
@@ -1054,6 +1063,12 @@ input.edit-input{
 .stat-opt-contain{
     white-space: nowrap;
     margin-bottom: 27px;
+    padding: 0 !important;
+}
+
+.stat-opt-contain .inline-b{
+    width: 16.6%;/*6 stat opts*/
+    padding: 0 !important;
 }
 
 .stat-opt-btn{
@@ -1096,6 +1111,7 @@ input.edit-input{
     display: flex;
     padding: 0 5px;
     font-size: 14px;
+    line-height: 14px;
     align-items: end;
     font-weight: 600;
     justify-content: right;
@@ -1114,7 +1130,7 @@ input.edit-input{
 }
 
 .bg-dep-var:first-of-type::before{
-    top: -7px;
+    top: 0;
     overflow: visible;
     position: absolute;
     content: attr(data-number);
@@ -1212,10 +1228,10 @@ input.edit-input{
 
 .lg-n-marker-cont::before{
     top: 45%;
-    left: -33px;
+    left: -37px;
     display: block;
     position: absolute;
-    background: white;
+    white-space: nowrap;
     color: var(--grid-color);
     content: attr(data-column);
     transform: rotate(-90deg);
@@ -1239,6 +1255,10 @@ input.edit-input{
     padding: 0 !important;
     border-left: 1px solid var(--accent-color);
     border-bottom: 1px solid var(--accent-color);
+}
+
+.aux-opts-cont{
+    padding: 0 0 17px 0 !important;
 }
 
 .lg-lbl-x{
@@ -1380,6 +1400,32 @@ input.edit-input{
     box-shadow:0 0 2px 1px #afafaf;
     -moz-box-shadow:0 0 2px 1px #afafaf;
     -webkit-box-shadow:0 0 2px 1px #afafaf
+}
+
+.lg-plot-opq{
+    opacity: 0;
+    background: white;
+}
+
+.lg-plot-opq:hover{
+    opacity: 1 !important;
+    background: var(--grid-color);
+    transition: opacity 0.2s ease;
+}
+
+.lg-canvas{
+    top: 0;
+    left: 0;
+    bottom: 0;
+    position: absolute;
+}
+
+.lg-msg{
+    top: 0; 
+    left: 0; 
+    right: 0;
+    position: absolute; 
+    color: var(--accent-color);
 }
 
 .num-col-val-dist-cont{
