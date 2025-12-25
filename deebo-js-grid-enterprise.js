@@ -1066,6 +1066,9 @@ deebo.methods = function() {
                 const cell = /data-cell/g.test(e.target.className) ? e.target : e.target.firstElementChild;
                 const ddReClick = cell.classList.contains("focused-el")
                 deebo.methods.clearAllFocused()
+                const dragger = document.getElementById("fCellDragger")
+                if(dragger)
+                    dragger.className = "focused-cell-dragger";
                 if(cell){//needs validation
                     const elProp = deebo.methods.getColFrmClsList(cell, "data-cell-")
                     const col = deebo.methods.replaceUniSep(elProp)
@@ -1083,7 +1086,21 @@ deebo.methods = function() {
                             setTimeout( function() { cell.focus() }, 25)
                             setTimeout( function() { cell.classList.add("focused-el") }, 150)
                         }
+                        return;
                     }
+                    const valEd = document.getElementById("validatedEdit")
+                    if(valEd)
+                        valEd.innerHTML = ""
+                    setTimeout( function() {
+                        const fCellDragger = document.getElementsByClassName("focused-cell-dragger")[0];
+                        const par = fCellDragger?.parentElement
+                        if(fCellDragger && par){
+                            const cbds = cell.getBoundingClientRect()
+                            const rbds = par.getBoundingClientRect()
+                            fCellDragger.style.left = (Math.ceil(cbds.left-rbds.left) + cbds.width - 4) + "px";
+                            fCellDragger.style.top = (Math.ceil(cbds.bottom-rbds.top) - 4) + "px";
+                        }
+                    })
                 }
             },
 
@@ -1102,6 +1119,117 @@ deebo.methods = function() {
                     if(el.nodeName === "INPUT")
                         setTimeout( function() { el.focus() })
                     rel.className = "relly"
+                    const fd = document.getElementById("fCellDragger")
+                    if(fd){
+                        fd.style.left = (Math.ceil(cbds.left-rbds.left) + cbds.width - 4) + "px";
+                        fd.style.top = (Math.ceil(cbds.bottom-rbds.top) - 4) + "px"
+                    }
+                }
+            },
+
+            clearFCellDragger: function() {
+                const fd = document.getElementById("fCellDragger")
+                if(fd){
+                    fd.className = "hide"
+                    fd.style.removeProperty("top")
+                    fd.style.removeProperty("left")
+                }
+            },
+
+            clearDCellFcsd: function() {
+                const els = document.getElementsByClassName("dragger-cell-focused")
+                const len = els.length
+                for(let i = (len-1); i >= 0; i--){
+                    const el = els[i]
+                    if(el)
+                        el.classList.remove("dragger-cell-focused")
+                }
+            },
+
+            clearValidatedEdit: function(e) {
+                if((e && e.type === "blur") || (e && e.type === "focus" && e.relatedTarget?.id === "fCellDragger")){
+                    setTimeout(deebo.methods.handleCellDraggerInit)
+                } else {
+                    deebo.methods.execValClear()
+                }
+            },
+
+            execValClear: function() {
+                deebo.methods.blurContEd()
+                deebo.methods.currEditIndex = -1
+                deebo.methods.currEditCol = ""
+                const valEd = document.getElementById("validatedEdit")
+                if(valEd){
+                    valEd.innerHTML = ""
+                    valEd.classList.add("invisible")
+                }
+                deebo.methods.clearFCellDragger()
+                deebo.methods.clearDCellFcsd()
+                deebo.methods.clearDragEditFlag()
+                setTimeout(deebo.methods.clearAllFocused)
+                try{
+                    window.removeEventListener("mouseup", deebo.methods.execValClear)
+                    window.removeEventListener("mousemove", deebo.methods.handleCellDraggerEdit)
+                    window.removeEventListener("selectstart", deebo.methods.stopWinSel)
+                }catch(e) {}
+            },
+
+            clearDragEditFlag: function() {
+                let i = 0
+                const rows = document.getElementsByClassName("data-table-row")
+                const len = rows.length
+                for(i; i < len; i++){
+                    const row = rows[i]
+                    if(row)
+                        row.removeAttribute("data-dragged")
+                }
+            },
+
+            handleCellDraggerInit: function() {
+                const actEl = document.activeElement
+                if(actEl && actEl.id === "fCellDragger"){
+                    deebo.methods.focusCellDragger()
+                } else {
+                if(!actEl || (actEl && !/data-cell/g.test(actEl?.className)))
+                    deebo.methods.execValClear() 
+                }
+            },
+
+            focusCellDragger: function() {
+                const valEd = document.getElementById("validatedEdit")
+                if(valEd){
+                    valEd.innerHTML = "";
+                    valEd.classList.add("invisible")
+                }
+                const cell= document.querySelector("#dataTableRow" + deebo.methods.currEditIndex + 
+                " .data-cell-" + deebo.methods.currEditCol?.replace(/ /g, deebo.methods.uniSep))
+                if(cell)
+                    cell.classList.add("dragger-cell-focused")
+                window.addEventListener("selectstart", deebo.methods.stopWinSel)
+                window.addEventListener("mousemove", deebo.methods.handleCellDraggerEdit)
+                setTimeout( function() { window.addEventListener("mouseup", deebo.methods.execValClear) })
+            },
+
+            handleCellDraggerEdit: function(e) {
+                if(e && e.target){
+                    let dragId = -1;
+                    const targ = e.target
+                    try{
+                        if(/dataTableRow/g.test(targ.id)){
+                            dragId = parseInt(targ.id.replace("dataTableRow", ""))
+                        } else {
+                            if(/data-cell/g.test(targ.className))
+                                dragId = parseInt(targ.parentElement.getAttribute("data-index"))
+                        }
+                        const row = document.getElementById("dataTableRow" + dragId)
+                        const cell = document.querySelector("#dataTableRow" + dragId + " .data-cell-" + deebo.methods.currEditCol.replace(/ /g, deebo.methods.uniSep))
+                        if(dragId > -1 && cell && (row && !row.getAttribute("data-dragged"))){
+                            row.setAttribute("data-dragged", "true")
+                            const val = dataTableService.methods.currFilData[deebo.methods.currEditIndex][deebo.methods.currEditCol]
+                            deebo.methods.currEditIndex = dragId
+                            deebo.methods.execCellEdit({ target: cell }, val)
+                        }
+                    }catch(e){}
                 }
             },
 
@@ -1156,29 +1284,45 @@ deebo.methods = function() {
                 return document.createElement("span")
             },
 
-            clearValidatedEdit: function() {
-                deebo.methods.blurContEd()//keep first
-                deebo.methods.currEditIndex = -1
-                deebo.methods.currEditCol = ""
-                const valEd = document.getElementById("validatedEdit")
-                valEd.innerHTML = ""
-                valEd.classList.add("invisible")
-                setTimeout(deebo.methods.clearAllFocused)
+            stopWinSel: function(e) {
+                e.preventDefault()
             },
 
             emitEdit: function(event) {
                 if(deebo.methods.currEditCol/*only for validated edits*/ || (event.relatedTarget && event.relatedTarget.classList.contains("edit-input")))
                     return;
                 deebo.methods.execCellEdit(event)
+                const el = event?.target
+                if(el){
+                    setTimeout( function() {
+                        const actEl = document.activeElement
+                        if(actEl && actEl.id === "fCellDragger"){
+                            el.classList.add("dragger-cell-focused")
+                            window.addEventListener("selectstart", deebo.methods.stopWinSel)
+                            window.addEventListener("mousemove", deebo.methods.handleCellDraggerEdit)
+                            setTimeout( function() { window.addEventListener("mouseup", deebo.methods.execValClear) })
+                            deebo.methods.currEditCol = deebo.methods.replaceUniSep(deebo.methods.getColFrmClsList(el, "data-cell-"))
+                        } else {
+                            if(!actEl || (actEl && !/data-cell/g.test(actEl?.className))){
+                                deebo.methods.currEditIndex = -1
+                                const fCellDragger = document.getElementsByClassName("focused-cell-dragger")[0]
+                                if(fCellDragger){
+                                    fCellDragger.style.removeProperty("top")
+                                    fCellDragger.style.removeProperty("left")
+                                }
+                            }
+                        }
+                    })
+                }
             },
 
-            execCellEdit: function(e) {
+            execCellEdit: function(e, forceValue) {
                 if(deebo.methods.currEditIndex > -1){
                 try{
                     let cfDIdx;
                     const valEl = document.getElementsByClassName("edit-input")[0]
-                    const forceVal = document.getElementsByClassName("edit-input-opt").length > 0 ? 
-                    (e.target.textContent === "-" ? null : e.target.textContent) : null;//select dd
+                    const forceVal = forceValue ? forceValue : (document.getElementsByClassName("edit-input-opt").length > 0 ? 
+                    (e.target.textContent === "-" ? null : e.target.textContent) : null);//select dd
                     let val = forceVal ? forceVal : (valEl ? valEl.value : e.target.textContent);
                     if(val && typeof val === "string" && document.getElementById("selEditdate"))
                         val = deebo.methods.coerceDate(val)
@@ -1220,7 +1364,7 @@ deebo.methods = function() {
                     if(useTxt.ancs && useTxt.ancs.length)
                         deebo.methods.giveCellAncOptions(deebo.methods.currEditIndex, col, useTxt.ancs)
                     if((e && (e.type === "blur" || e.type === "click")) || deebo.methods.isEnterKey(e))
-                        deebo.methods.clearValidatedEdit()
+                        deebo.methods.clearValidatedEdit(e)
                     try{ deeboCellEditHook((deebo.methods.uProvidedPrimKey || deebo.methods.currEditIndex), realProp, val) }catch(e){}
                 }catch(e){ }
                 }
@@ -6350,6 +6494,7 @@ document.addEventListener("DOMContentLoaded", function() {
         document.getElementById("btnExportTsv").addEventListener("click", deebo.methods.handleExportData)
         document.getElementById("btnExportJson").addEventListener("click", deebo.methods.handleExportData)
         document.getElementById("btnCharts").addEventListener("click", deebo.methods.displaySelectedInsights)
+        document.getElementById("fCellDragger").addEventListener("focus", deebo.methods.focusCellDragger)
         document.getElementsByClassName("deebo-dd-contain")[0].addEventListener("click", deebo.methods.toggleExportOpts)
         window.addEventListener("resize", deebo.methods.cleanUpPieLayovers)
         window.addEventListener("resize", deebo.methods.clearValidatedEdit)

@@ -18,6 +18,7 @@
     <div id="dataTableChecks" class="relly"></div>
     <div id="selFilContainer" class="relly"></div>
     <div id="validatedEdit" class="relly invisible"></div>
+    <div class="relly" style="z-index: 10;"><div tabindex="0" id="fCellDragger"></div></div>
     <div class="row-numbers" >
         <div id="rowNumHeader" class="row-num-header flex-center"><div class="semi-heavy">No.</div></div>
         <div style="overflow: hidden"><div id="rowNumBody" style="overflow: auto"></div></div>
@@ -63,7 +64,7 @@
         xhr.onreadystatechange = function() {
             if(xhr.readyState === 4){
                 try{
-                    let xhrdata = JSON.parse(xhr.responseText)["result"]
+                    let xhrdata = JSON.parse(xhr.responseText)//["result"]
                     if(xhr.status === 200){
                         xhrdata = deebo.methods.convertNeededCols(xhrdata)
                         dataTableService.methods.mainData = xhrdata.filter( function(d) { return true })

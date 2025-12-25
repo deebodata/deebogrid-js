@@ -712,8 +712,19 @@ input.edit-input{
     border-radius: 0;
 }
 
-.data-cell:focus, input.edit-input:focus{
+.data-cell:focus, input.edit-input:focus, .dragger-cell-focused{
     outline: 1px solid #00a8f3;
+}
+
+.focused-cell-dragger{
+    width: 9px;
+    height: 9px;
+    cursor:crosshair;
+    position: absolute;
+    background: #00a8f3;
+    box-shadow: 0 0 1px 1px var(--accent-color);
+    -moz-box-shadow: 0 0 1px 1px var(--accent-color);
+    -webkit-box-shadow: 0 0 1px 1px var(--accent-color);
 }
 
 .holding-check{
