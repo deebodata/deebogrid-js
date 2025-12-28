@@ -712,8 +712,14 @@ input.edit-input{
     border-radius: 0;
 }
 
-.data-cell:focus, input.edit-input:focus, .dragger-cell-focused{
+.data-cell:focus, input.edit-input:focus{
     outline: 1px solid #00a8f3;
+}
+
+.dragger-cell-focused{
+    background: rgba(0, 168, 243, 0.2);
+    border-left: 1px solid #00a8f3;
+    border-right: 1px solid #00a8f3 !important;
 }
 
 .focused-cell-dragger{
