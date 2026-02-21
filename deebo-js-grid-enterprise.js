@@ -1077,8 +1077,7 @@ deebo.methods = function() {
                     const filInp = document.getElementById("filter" + elProp)
                     const type = filInp.getAttribute("type")
                     deebo.methods.currEditCol = col
-                    if(col && !/<(img|a)/g.test(cell.innerHTML) && (filInp && ["number", "date"].indexOf(type) > -1 || 
-                    (dataTableService.methods.dataFilSrtTracker[col].selDDVals && dataTableService.methods.dataFilSrtTracker[col].selDDVals.length))){
+                    if(deebo.methods.cellEditNeedsVal(col, cell, filInp, type)){
                         deebo.methods.handleValidatedCellEditFocus(cell, type, cell.textContent)
                         if(dataTableService.methods.dataFilSrtTracker[col].selDDVals){//only for sel dds
                             if(ddReClick){
@@ -1104,6 +1103,14 @@ deebo.methods = function() {
                         }
                     })
                 }
+            },
+
+            cellEditNeedsVal: function(col, cell, filInp, type) {
+                if(col && !/<(img|a)/g.test(cell.innerHTML) && (filInp && ["number", "date"].indexOf(type) > -1 || 
+                    (dataTableService.methods.dataFilSrtTracker[col].selDDVals && dataTableService.methods.dataFilSrtTracker[col].selDDVals.length))){
+                        return true
+                }
+                return false;
             },
 
             handleValidatedCellEditFocus: function(cell, type, value) {
@@ -1363,10 +1370,14 @@ deebo.methods = function() {
             },
 
             emitEdit: function(event) {
-                if(deebo.methods.currEditCol/*only for validated edits*/ || (event.relatedTarget && event.relatedTarget.classList.contains("edit-input")))
+                const el = event?.target
+                const elProp = deebo.methods.getColFrmClsList(el, "data-cell-")
+                const filInp = document.getElementById("filter" + elProp)
+                const type = filInp?.getAttribute("type")
+                if(deebo.methods.cellEditNeedsVal(deebo.methods.replaceUniSep(elProp), el, filInp, type)/*only for validated edits*/ || 
+                (event.relatedTarget && event.relatedTarget.classList.contains("edit-input")))
                     return;
                 deebo.methods.execCellEdit(event)
-                const el = event?.target
                 if(el){
                     setTimeout( function() {
                         const actEl = document.activeElement
@@ -2839,7 +2850,8 @@ deebo.methods = function() {
                             btnx.className = "hide"
                     }
                 } else {
-                    deebo.methods.filterBuildUp.push(event)
+                    if(!deebo.methods.filterBuildUp.find( f => f.target.value === val))
+                        deebo.methods.filterBuildUp.push(event)
                 }
             },
 
