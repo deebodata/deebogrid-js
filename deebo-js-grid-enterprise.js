@@ -686,11 +686,14 @@ deebo.methods = function() {
 
             setLoading: function(err) {
                 const tbody = document.getElementById("dataTableBody")
-                if(err)
-                    tbody.removeChild(document.getElementsByClassName("data-table-row")[0])
-                const lrow = document.createElement("div")
-                deebo.methods.styleEmptyFilDataRow(lrow, tbody, null, (err || "Loading..."))
-                tbody.appendChild(lrow)
+                if(tbody){
+                    const dtr = document.getElementsByClassName("data-table-row")[0]
+                    if(err && dtr)
+                        tbody.removeChild(dtr)
+                    const lrow = document.createElement("div")
+                    deebo.methods.styleEmptyFilDataRow(lrow, tbody, null, (err || "Loading..."))
+                    tbody.appendChild(lrow)
+                }
             },
 
             buildInitUiDataTable: function(data, color1, color2, blockEditing, hideRowNumbers) {//will be array of objects
@@ -1732,7 +1735,8 @@ deebo.methods = function() {
                 cell.tabIndex = 0
                 if(prop === dataTableService.methods.firstCol)
                     cell.className += " holding-check"
-                if(dataTableService.methods.dataFilSrtTracker[prop].minimize)
+                const dProp = dataTableService.methods.dataFilSrtTracker[prop]
+                if(dProp && dProp.minimize)
                     cell.classList.add("col-header-minimized")
                 if(vis)
                     deebo.methods.updateCell(cell, prop, elProp, text, indx)
@@ -3565,6 +3569,7 @@ deebo.methods = function() {
                     const flTop = Math.floor(hdrBds.top)
                     el.className = "selected-row-insights"
                     el.style.top = flTop + "px";
+                    setTimeout( function() { el.className += " selected-row-insights-show" }, 250)
                     let tblH = 500;
                     const nmHgt= parseInt(deebo.methods.dTblHeight.toString())
                     if(!isNaN(nmHgt))
@@ -3759,6 +3764,13 @@ deebo.methods = function() {
                     h2.className = "center"
                     deebo.methods.makeCloseSelInsightsBtn(h2)
                     el.appendChild(h2)
+                } else {
+                    el.className = "insights"
+                    const h2 = document.createElement("h2")
+                    h2.className = "center"
+                    h2.textContent = "Not enough data to display insights for"
+                    deebo.methods.makeCloseSelInsightsBtn(h2)
+                    return el.appendChild(h2)
                 }
                 for(o; o < len; o++){
                     const col = cols[o]
