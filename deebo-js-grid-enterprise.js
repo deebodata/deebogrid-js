@@ -1078,11 +1078,11 @@ deebo.methods = function() {
                     const elProp = deebo.methods.getColFrmClsList(cell, "data-cell-")
                     const col = deebo.methods.replaceUniSep(elProp)
                     const filInp = document.getElementById("filter" + elProp)
-                    const type = filInp.getAttribute("type")
+                    const type = filInp?.getAttribute("type")
                     deebo.methods.currEditCol = col
                     if(deebo.methods.cellEditNeedsVal(col, cell, filInp, type)){
                         deebo.methods.handleValidatedCellEditFocus(cell, type, cell.textContent)
-                        if(dataTableService.methods.dataFilSrtTracker[col].selDDVals){//only for sel dds
+                        if(dataTableService.methods.dataFilSrtTracker[col] && dataTableService.methods.dataFilSrtTracker[col].selDDVals){//only for sel dds
                             if(ddReClick){
                                 cell.blur()
                                 return deebo.methods.clearAllFocused()
@@ -1110,7 +1110,7 @@ deebo.methods = function() {
 
             cellEditNeedsVal: function(col, cell, filInp, type) {
                 if(col && !/<(img|a)/g.test(cell.innerHTML) && (filInp && ["number", "date"].indexOf(type) > -1 || 
-                    (dataTableService.methods.dataFilSrtTracker[col].selDDVals && dataTableService.methods.dataFilSrtTracker[col].selDDVals.length))){
+                    (dataTableService.methods.dataFilSrtTracker[col] &&dataTableService.methods.dataFilSrtTracker[col].selDDVals && dataTableService.methods.dataFilSrtTracker[col].selDDVals.length))){
                         return true
                 }
                 return false;
