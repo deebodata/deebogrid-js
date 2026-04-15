@@ -217,6 +217,7 @@ deebo.methods = function() {
                 let i = 0;
                 const len = data?.length
                 let allCols
+                let throwAways = []
                 if(data && data.some( function(d) { return d && typeof d === "object" })){
                     allCols = deebo.methods.getDataColumns(data)//gets all possible props in array
                     dataTableService.methods.dataFilSrtTracker = dataTableService.methods.buildDataFilSrtTracker(allCols)
@@ -247,11 +248,8 @@ deebo.methods = function() {
                                 const keys = Object.keys(data[i])
                                 const diff = allCols.filter( function(c) { return keys.indexOf(c) < 0 })
                                 const dLen = diff.length
-                                if(dLen){//obj doesn't have all props
-                                    let n = 0
-                                    for(n; n < dLen; n++)
-                                        nData[i][diff[n]] = "";
-                                }
+                                if(dLen)//obj doesn't have all props
+                                    throwAways.push(i)
                             }
                         }catch(e) {  }
                     }
@@ -279,6 +277,8 @@ deebo.methods = function() {
                         }
                     }
                 }
+                if(throwAways.length)
+                    nData = nData.filter( function(d, ind) { return throwAways.indexOf(ind) < 0 })
                 return nData
             },
 
@@ -697,13 +697,13 @@ deebo.methods = function() {
             },
 
             buildInitUiDataTable: function(data, color1, color2, blockEditing, hideRowNumbers) {//will be array of objects
-                const cols = Object.keys(data[0])         
-                const head = document.getElementById("dataTableHeaders")
-                const tbody = document.getElementById("dataTableBody")
-                try{ tbody.removeChild(document.getElementsByClassName("data-table-row")[0]) }catch(e){}
-                if(blockEditing)
-                    deebo.methods.editable = false;
                 try{
+                    const cols = Object.keys(data[0])         
+                    const head = document.getElementById("dataTableHeaders")
+                    const tbody = document.getElementById("dataTableBody")
+                    try{ tbody.removeChild(document.getElementsByClassName("data-table-row")[0]) }catch(e){}
+                    if(blockEditing)
+                        deebo.methods.editable = false;
                     let i = 0; let n = 0;
                     const len = data.length;
                     const colLen = cols.length
@@ -849,7 +849,9 @@ deebo.methods = function() {
                         deebo.methods.setColsOnVisScreen()
                     }, 250)
                     deebo.methods.getPrimaryKey(cols)
-                } catch(e) { }                
+                } catch(e) { 
+                    deebo.methods.setLoading(e.stack)
+                }                
             },
 
             getPrimaryKey: function(cols) {
@@ -2886,7 +2888,7 @@ deebo.methods = function() {
                 const defNum = parseInt(dataTableService.methods.defltRHgt.replace(/[ ]?px/g, ""))
                 const init = Math.max(deebo.methods.dTblHeight/defNum);
                 const btnCharts = document.getElementById("btnCharts")
-                const len = dataTableService.methods.currFilData.length
+                const len = dataTableService.methods.currFilData?.length
                 if(!len){//always just add 1
                     const row = document.createElement("div")
                     deebo.methods.styleEmptyFilDataRow(row, tbody, tbodyX)
@@ -3055,6 +3057,8 @@ deebo.methods = function() {
             workerUrl: /*"http://127.0.0.1:8080/worker.js"*/"http://localhost:8080/worker.js",
 
             resetCurrentData: function(event, col) {
+                if(!dataTableService.methods.mainData)//starts null
+                    return;
                 dataTableService.methods.sortOrder = []
                 let i = 0;
                 const arrs = document.getElementsByClassName("data-sort-arr")
@@ -3073,10 +3077,10 @@ deebo.methods = function() {
                 deebo.methods.removeAllFreezeCols()
                 dataTableService.methods.setTableBounds()
                 dataTableService.methods.resetFilSrtTracker()
-                dataTableService.methods.currFilData = dataTableService.methods.mainData.filter( function(d) { return true })
+                dataTableService.methods.currFilData = dataTableService.methods.mainData?.filter( function(d) { return true })
                 deebo.methods.renderCurrData(true, col)
                 document.getElementById("topLevelDataFilter").value = ""
-                const dct = dataTableService.methods.currFilData.length.toLocaleString(undefined, { maximumFractionDigits: 0 })
+                const dct = dataTableService.methods.currFilData?.length.toLocaleString(undefined, { maximumFractionDigits: 0 })
                 const tRows = document.getElementById("totalRows")
                 if(tRows){
                     tRows.textContent = dct
@@ -3394,7 +3398,7 @@ deebo.methods = function() {
 
             handleExportData: function(event) { 
                 if(!dataTableService.methods.mainData || !dataTableService.methods.mainDataLen)
-                    return alert("Please generate a table then export data!");
+                    return alert("Please generate a data grid then export data!");
                 event.target.disabled = true
                 try{
                     let data; let cType = "application/octet-stream";
