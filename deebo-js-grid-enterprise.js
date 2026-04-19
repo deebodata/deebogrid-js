@@ -1957,7 +1957,7 @@ deebo.methods = function() {
                 }
             },
 
-            execVertScrollUp(cols, colLen) {
+            execVertScrollUp: function(cols, colLen) {
                 const vlen = dataTableService.methods.visibleCols.length
                 const lastVisInd = cols.indexOf(dataTableService.methods.visibleCols[(vlen-1)]) + 1;
                 const ael = document.getElementById("aboveArea")
@@ -2039,7 +2039,7 @@ deebo.methods = function() {
                 return rows
             },
 
-            clearAboveFoldRows() {
+            clearAboveFoldRows: function() {
                 const justids = deebo.methods.getRowsWithContentVert("above")
                 const changes = justids.length
                 if(changes > 0){
@@ -2068,7 +2068,7 @@ deebo.methods = function() {
                 }
             },
 
-            clearBelowFoldRows() {
+            clearBelowFoldRows: function() {
                 const justids = deebo.methods.getRowsWithContentVert("below")
                 let changes = justids.length
                 if(changes > 0){
@@ -5806,7 +5806,6 @@ dataTableService.methods = function() {
             sortOrder: [],
             mainData: null,
             mainDataLen: 0,
-            auxData: null,
             tblBot: 0,
             tblTop: 0,
             tblLeft: 0,
@@ -5870,7 +5869,7 @@ dataTableService.methods = function() {
                 dataTableService.methods.setTblHorizBounds()
             },
 
-            elIsAboveFold(el, top) {
+            elIsAboveFold: function(el, top) {
                 if(el){
                     const elRect = el.getBoundingClientRect()
                     if(el && elRect && elRect.bottom < top)
@@ -5880,7 +5879,7 @@ dataTableService.methods = function() {
                 return false;
             },
 
-            elIsBelowFold(el, top) {
+            elIsBelowFold: function(el, top) {
                 if(el){
                     const elRect = el.getBoundingClientRect()
                     if(el && elRect && elRect.top > top)
