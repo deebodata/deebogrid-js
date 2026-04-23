@@ -217,7 +217,7 @@ deebo.methods = function() {
                 let i = 0;
                 const len = data?.length
                 let allCols
-                let throwAways = []
+                // let throwAways = []
                 if(data && data.some( function(d) { return d && typeof d === "object" })){
                     allCols = deebo.methods.getDataColumns(data)//gets all possible props in array
                     dataTableService.methods.dataFilSrtTracker = dataTableService.methods.buildDataFilSrtTracker(allCols)
@@ -248,8 +248,12 @@ deebo.methods = function() {
                                 const keys = Object.keys(data[i])
                                 const diff = allCols.filter( function(c) { return keys.indexOf(c) < 0 })
                                 const dLen = diff.length
-                                if(dLen)//obj doesn't have all props
-                                    throwAways.push(i)
+                                if(dLen){//obj doesn't have all props
+                                    // throwAways.push(i)
+                                    let n = 0
+                                    for(n; n < dLen; n++)
+                                        nData[i][diff[n]] = "";
+                                }
                             }
                         }catch(e) {  }
                     }
@@ -277,8 +281,8 @@ deebo.methods = function() {
                         }
                     }
                 }
-                if(throwAways.length)
-                    nData = nData.filter( function(d, ind) { return throwAways.indexOf(ind) < 0 })
+                // if(throwAways.length)
+                //     nData = nData.filter( function(d, ind) { return throwAways.indexOf(ind) < 0 })
                 return nData
             },
 
@@ -3854,6 +3858,8 @@ deebo.methods = function() {
                         const inner = document.createElement("div")
                         const name = document.createElement("h3")
                         const useId = ((selOrFil || "") + "insField" + elIdCol)
+                        if(document.getElementById(useId))
+                            continue
                         div.id = useId
                         div.className = "insight-field"
                         if(wid >= 760)
@@ -4827,6 +4833,8 @@ deebo.methods = function() {
                     const prettyDc = document.getElementById("header" + elCol)?.textContent
                     const parId = (selOrFil || "") + "insField" + elCol
                     const par = document.getElementById(parId)?.firstElementChild
+                    if(!par)
+                        continue
                     const hdiv = document.createElement("div")
                     hdiv.className = "lg-title-cont";
                     // const lim = 5000//don't auto load
@@ -4954,12 +4962,13 @@ deebo.methods = function() {
                 }
                 if(timeD && timeD != "-1"){
                     try{
-                    const vlen = useData.length
                     const oneDay = (1000*60*60*24);
-                    let oData = useData.filter(function(d) {return true} ).sort( function(a, b) {return a["dtColumn"] > b["dtColumn"] ? 1 : -1} )
+                    let oData = useData.filter( function(v) {return v && v["dtColumn"] && deebo.methods.isADateObject(v["dtColumn"]) && v["dtColumn"].toString() !== "Invalid Date"}).
+                    sort( function(a, b) {return a["dtColumn"] > b["dtColumn"] ? 1 : -1} );
+                    const vlen = oData.length
                     const lastDate = oData[(vlen-1)].dtColumn.getTime()
                     const cutoff = (lastDate-(timeD*oneDay))
-                    useData = useData.filter( function(v) {return v["dtColumn"].getTime() >= cutoff} )
+                    useData = oData.filter( function(v) {return v["dtColumn"].getTime() >= cutoff} )
                     }catch(e){}
                 }
                 if(deebo.methods.topIsInView(parId)){
@@ -5051,13 +5060,29 @@ deebo.methods = function() {
                 }
             },
 
+            getYTDNumDays: function(dtmax) {
+                try{
+                    const dt = new Date()
+                    const yr = dt.getFullYear()
+                    const oneDay = (1000*60*60*24);
+                    const jan1 = new Date("January 1, "+ yr +" 00:01:00")
+                    const gap = Math.floor((dtmax.getTime() - jan1.getTime()) / oneDay)
+                    return gap > 0 ? gap : null;
+                } catch(e){ return null}
+            },
+
             findTimeDiffOpts: function(milRange, dtmax, cont, id, timeD) {
                 if(cont){
                     let i = 0
                     // const oneDay = (1000*60*60*24);
                     // const range = Math.floor(milRange/oneDay)
-                    const avail = [{text: "1D", val: 1}, {text: "5D", val: 5},{text: "1M", val: 31},
-                    {text: "6M", val: Math.ceil(365/2)},{text: "1Y", val: 365}, {text: "5Y", val: ((365*5)+1)}]
+                    const ytd = "YTD"
+                    const ytdNum = deebo.methods.getYTDNumDays(dtmax)
+                    let avail = [{text: "1D", val: 1}, {text: "5D", val: 5},{text: "1M", val: 31},
+                    {text: "6M", val: Math.ceil(365/2)}, {text: ytd, val: ytdNum},
+                    {text: "1Y", val: 365}, {text: "5Y", val: ((365*5)+1)}]
+                    if(!ytdNum)
+                        avail = avail.filter( a => a.text !== ytd)
                     const len = avail.length
                     const sel = document.createElement("select")
                     const eopt = document.createElement("option")
@@ -5153,7 +5178,10 @@ deebo.methods = function() {
                 for(d; d < dlen; d++){
                     let obj = {}
                     const dt = uDates[d]
-                    const justVal = valArr.filter( function(d) {return d[("dtColumn")].getTime() === dt.getTime()}).map( function(d) {return d[("numColumn")]} )
+                    const justVal = valArr.filter( function(d) {
+                                    return d && d[("dtColumn")] && deebo.methods.isADateObject(d[("dtColumn")]) && d["dtColumn"].toString() !== "Invalid Date" &&
+                                    deebo.methods.isADateObject(dt) && dt.toString() !== "Invalid Date" && d[("dtColumn")].getTime() === dt.getTime()} ).
+                                    map( function(d) {return d[("numColumn")]} )
                     const jlen = justVal.length
                     if(jlen){
                         switch(stat){
@@ -5297,6 +5325,7 @@ deebo.methods = function() {
                             // if(!warnmsg)
                                 par.insertAdjacentElement("afterbegin", ntickCont)
 
+                            let markToKill = false
                             const killLg = function(msg) {
                                 ntickCont.innerHTML = ""
                                 const useMsg = msg || "Not enough data for a graph"
@@ -5313,7 +5342,7 @@ deebo.methods = function() {
                             const numArr = data.filter( function(a) { return !!a[dcol] }).map( function(d) { return d[ncol] }).
                             filter( function(a) { return !!a && a >= 0 }).sort( function(a, b) { return (a - b)*-1 });
                             if(numArr.length < 2 || !numArr.some( function(n) { return n > 0 }))
-                                return killLg()
+                                markToKill = true//return killLg()
                             const nlen = numArr.length;
                             const nmmin = numArr[(nlen-1)]
                             const nmmax = numArr[0]
@@ -5371,7 +5400,7 @@ deebo.methods = function() {
                             const dSet = new Set(data.filter( function(a) { return !!a[ncol] }).map( function(d) { return d[dcol] }))//unique dates
                             dSet.forEach( function(v) { arrFrmSet.push(v) });
                             if(arrFrmSet.length < 2)
-                                return killLg()
+                                markToKill = true//return killLg()
                             const dttype = typeof arrFrmSet[0];
                             const ordDts = arrFrmSet.filter( function(a) { return !!a }).sort( function(a, b) { 
                                 return (dttype !== "object" ? (parseInt(a.toString()) - parseInt(b.toString())) : ( a.getTime() - b.getTime() ))
@@ -5400,13 +5429,17 @@ deebo.methods = function() {
                             }
                             dtrange = typeof ordDts[0] === "object" ? (dtmax.getTime() - dtmin.getTime()) : (dtmax - dtmin)
                             if(!dtrange || typeof dtrange !== "number")
-                                return killLg()
+                                markToKill = true//return killLg()
                             const figureDtTicks = function(val) {
                                 return typeof dtmin === "object" ? new Date(val+dtmin.getTime()) : (val+dtmin);
                             }
                             lg.innerHTML = ""
                             if(!event)
                                 setTimeout( function() { deebo.methods.findTimeDiffOpts(dtrange, dtmax, par.previousElementSibling?.children[1], par.id, timeD) }, 500)
+                            if(markToKill){//kill after timediff opts get built
+                                deebo.methods.enableLgBtns(par)
+                                return killLg();
+                            }
                             // const qtrdts = figureDtTicks(Math.ceil(dtrange/4))
                             const halfdts = figureDtTicks(Math.ceil(dtrange/2))
                             // const thrqtrdts = figureDtTicks(Math.ceil(dtrange*0.75))
