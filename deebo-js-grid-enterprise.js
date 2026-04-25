@@ -2766,7 +2766,7 @@ deebo.methods = function() {
                     deebo.methods.renderCurrData(null, field)
                     reset.disabled = false
                     if(!dataTableService.methods.currSelRows.length && dataTableService.methods.arefilSrtTrkPropsDefault())
-                        reset.click()
+                        deebo.methods.resetCurrentData(null, field)
                 }
                 if(btn)
                     btn.disabled = false
@@ -2881,8 +2881,13 @@ deebo.methods = function() {
                 const tbodyX = tbody.scrollLeft
                 tbody.innerHTML = ""
                 deebo.methods.resetTblBody(tbody)
+                deebo.methods.horizRest = 0
                 tbody.scrollTop = 0
+                deebo.methods.verticalRest = 0
                 let didXScrl = false;
+                const thead = document.getElementById("dataTableHeaders")
+                if(reset && thead)
+                    thead.style.marginLeft = "0px"
                 deebo.methods.clearValidatedEdit(null, true)
                 document.getElementById("dataTableChecks").innerHTML = ""
                 if(deebo.methods.rowNumbers)
@@ -2969,8 +2974,7 @@ deebo.methods = function() {
                     if(field && field === prop && !didXScrl){
                         setTimeout( function() { 
                             tbody.scrollLeft = tbodyX 
-                            const thead = document.getElementById("dataTableHeaders")
-                            if(tbodyX > 0)
+                            if(thead)
                                 thead.style.marginLeft = (-tbodyX + "px")
                             deebo.methods.horizRest = tbodyX
                         }, 100)
@@ -2988,7 +2992,8 @@ deebo.methods = function() {
                     if(fhead){
                         const bds = fhead.getBoundingClientRect()
                         room = dataTableService.methods.tblRight - bds.right
-                        offst = Math.ceil(room/bds.width)
+                        if(room > 0)
+                            offst = Math.ceil(room/bds.width)
                     }
                     horizLim = Math.max(horizLim, (deebo.methods.columnNames.indexOf(field) + offst))
                 }

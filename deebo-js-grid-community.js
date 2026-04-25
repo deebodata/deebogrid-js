@@ -2526,7 +2526,7 @@ deebo.methods = function() {
                     deebo.methods.renderCurrData(null, field)
                     reset.disabled = false
                     if(!dataTableService.methods.currSelRows.length && dataTableService.methods.arefilSrtTrkPropsDefault())
-                        reset.click()
+                        deebo.methods.resetCurrentData(null, field)
                 }
                 if(btn)
                     btn.disabled = false
@@ -2640,8 +2640,13 @@ deebo.methods = function() {
                 const tbodyX = tbody.scrollLeft
                 tbody.innerHTML = ""
                 deebo.methods.resetTblBody(tbody)
+                deebo.methods.horizRest = 0
                 tbody.scrollTop = 0
+                deebo.methods.verticalRest = 0
                 let didXScrl = false;
+                const thead = document.getElementById("dataTableHeaders")
+                if(reset && thead)
+                    thead.style.marginLeft = "0px"
                 deebo.methods.clearValidatedEdit(null, true)
                 document.getElementById("dataTableChecks").innerHTML = ""
                 if(deebo.methods.rowNumbers)
@@ -2726,8 +2731,7 @@ deebo.methods = function() {
                     if(field && field === prop && !didXScrl){
                         setTimeout( function() { 
                             tbody.scrollLeft = tbodyX 
-                            const thead = document.getElementById("dataTableHeaders")
-                            if(tbodyX > 0)
+                            if(thead)
                                 thead.style.marginLeft = (-tbodyX + "px")
                             deebo.methods.horizRest = tbodyX
                         }, 100)
@@ -2745,7 +2749,8 @@ deebo.methods = function() {
                     if(fhead){
                         const bds = fhead.getBoundingClientRect()
                         room = dataTableService.methods.tblRight - bds.right
-                        offst = Math.ceil(room/bds.width)
+                        if(room > 0)
+                            offst = Math.ceil(room/bds.width)
                     }
                     horizLim = Math.max(horizLim, (deebo.methods.columnNames.indexOf(field) + offst))
                 }
@@ -3139,7 +3144,7 @@ deebo.methods = function() {
                     const obj = dataTableService.methods.dataFilSrtTracker[prop]
                     const colNm = deebo.methods.sanitizeUi(deebo.methods.titleCase(prop));
                     if(obj && (obj.filter || (obj.comparator && doWithoutFilt.indexOf(obj.comparator) > -1))){
-                        const comp = deebo.methods.mapCompToSym(obj.comparator ? obj.comparator : "Equals")
+                        const comp = deebo.methods.mapCompToSym(obj.comparator ? obj.comparator : (obj.type === "string" ? "Contains" : "Equals"))
                         let propFilTxt = (initB + colNm + "</span> " + comp)
                         if(obj.filter)
                             propFilTxt += (initB + deebo.methods.sanitizeUi(obj.filter) + "</span>");
@@ -3212,7 +3217,7 @@ dataTableService.methods = function() {
             displayOnlySelRows: false,
             dataFilSrtTracker: null,
             comparatorOpts: {
-                text: ["Equals", "Not Equal", "Empty", "Not Empty"],
+                text: ["Equals", "Not Equal", "Empty", "Not Empty", "Contains",],
                 number: ["Equals", "Not Equal", "Empty", "Not Empty"],
                 date: ["Equals", "Not on", "Empty", "Not Empty"],
             },
@@ -3428,6 +3433,8 @@ dataTableService.methods = function() {
                                 return Math.abs(colVal.getTime() - filterVal.getTime()) > oneDay
                             return colVal != filterVal
                         }
+                        if(comparator === "Contains")
+                            return colVal && ((typeof colVal === "string" && colVal.indexOf(filterVal) > -1) || colVal == filterVal)
                         if(comparator === "Not Empty"){
                             if(!filterVal && filterVal != "0")
                                 return !!colVal || (colVal === 0)//just return non empty
@@ -3518,7 +3525,7 @@ dataTableService.methods = function() {
                     const obj = dataTableService.methods.dataFilSrtTracker[prop]
                     if(obj && (obj.filter || obj.comparator || obj.sort || obj.minimize || obj.freeze)){
                         const fm = ignoreColFM ? true : (!obj.minimize && !obj.freeze);
-                        const defComp = !obj.comparator || ["Equals"].indexOf(obj.comparator) > -1;
+                        const defComp = !obj.comparator || ["Equals", "Contains"].indexOf(obj.comparator) > -1;
                         if(!obj.filter && !obj.sort && fm && defComp && document.getElementById("selectComp" + elId)){
                             //let it go
                         } else
