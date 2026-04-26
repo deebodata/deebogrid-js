@@ -769,8 +769,8 @@ deebo.methods = function() {
                                 cell.classList.add(symbolCls)
                                 cell.setAttribute("data-symbol", sym)
                             }
-                            if(useTxt.ancs && useTxt.ancs.length)
-                                deebo.methods.giveCellAncOptions(indx, elProp, useTxt.ancs)
+                            // if(useTxt.ancs && useTxt.ancs.length)
+                            //     deebo.methods.giveCellAncOptions(indx, elProp, useTxt.ancs)
                             if(window.innerWidth >= deebo.methods.mouseEventBreak){
                                 cell.addEventListener("mousemove", tblDragEvents.methods.checkItemBorderCursor)
                                 cell.addEventListener("mousemove", tblDragEvents.methods.handleCellSizeAdjust)
@@ -1235,8 +1235,8 @@ deebo.methods = function() {
                     if(cell && deebo.methods.listenToCellDraggerMouseMove)
                         cell.classList.add("dragger-cell-focused")
                     deebo.methods.blockEventsInCells()
-                    if(useTxt.ancs && useTxt.ancs.length)
-                        deebo.methods.giveCellAncOptions(deebo.methods.currEditIndex, col, useTxt.ancs)
+                    // if(useTxt.ancs && useTxt.ancs.length)
+                    //     deebo.methods.giveCellAncOptions(deebo.methods.currEditIndex, col, useTxt.ancs)
                     if((e && (e.type === "blur" || e.type === "click")) || deebo.methods.isEnterKey(e))
                         deebo.methods.clearValidatedEdit(e)
                     try{ deeboCellEditHook((deebo.methods.uProvidedPrimKey || deebo.methods.currEditIndex), realProp, val) }catch(e){}
@@ -1560,8 +1560,8 @@ deebo.methods = function() {
                     cell.classList.add(symbolCls)
                     cell.setAttribute("data-symbol", sym)
                 }
-                if(useTxt.ancs && useTxt.ancs.length)
-                    deebo.methods.giveCellAncOptions(indx, elProp, useTxt.ancs)
+                // if(useTxt.ancs && useTxt.ancs.length)
+                //     deebo.methods.giveCellAncOptions(indx, elProp, useTxt.ancs)
                 if(window.innerWidth >= deebo.methods.mouseEventBreak){
                     cell.addEventListener("mousemove", tblDragEvents.methods.checkItemBorderCursor)
                     cell.addEventListener("mousemove", tblDragEvents.methods.handleCellSizeAdjust)
@@ -1916,6 +1916,7 @@ deebo.methods = function() {
                     arr.className = "data-sort-arr"
                     iArr.className = "material-icons"
                     iArr.textContent = "arrow_upward"
+                    name.onclick = deebo.methods.doSortOnClick
                     arr.appendChild(iArr)
                     arr.onclick = deebo.methods.doSortOnClick
                     min.type = "button"
@@ -2510,27 +2511,52 @@ deebo.methods = function() {
             doSortOnClick: function(event) {
                 if(event && typeof event.stopPropagation === "function")
                     event.stopPropagation()
-                let valid = false
-                const reset = document.getElementById("btnReset")
-                const btn = event.target.id ? event.target : event.target.parentElement
-                if(btn)
-                    btn.disabled = true
-                const elIdField = (event.target.id || event.target.parentElement.id).replace(/btnSort/g, "")
-                const field = deebo.methods.replaceUniSep(elIdField)
-                if(typeof Object.hasOwn !== "undefined")
-                    valid = Object.hasOwn(dataTableService.methods.dataFilSrtTracker, field);
-                else
-                    valid = dataTableService.methods.dataFilSrtTracker.hasOwnProperty(field);
-                if(valid){
-                    dataTableService.methods.doSortOnField(field)
-                    deebo.methods.renderCurrData(null, field)
-                    reset.disabled = false
-                    if(!dataTableService.methods.currSelRows.length && dataTableService.methods.arefilSrtTrkPropsDefault())
-                        deebo.methods.resetCurrentData(null, field)
-                }
-                if(btn)
-                    btn.disabled = false
+                if(deebo.methods.isSorting)
+                    return;
+                try{
+                    let valid = false
+                    let btn;
+                    let span;
+                    let elIdField;
+                    const reset = document.getElementById("btnReset")
+                    if(event && event.target.id && event.target.nodeName === "SPAN"){
+                        span = event.target
+                        btn = event.target.nextElementSibling
+                        if(btn)
+                            btn.disabled = true
+                        if(span)
+                            span.style.opacity = "0.5"
+                        elIdField = btn.id.replace(/btnSort/g, "")
+                    } else {
+                        btn = event.target.id ? event.target : event.target.parentElement
+                        if(btn)
+                            btn.disabled = true
+                        elIdField = (event.target.id || event.target.parentElement.id).replace(/btnSort/g, "")
+                    }
+                    deebo.methods.isSorting = true
+                    const field = deebo.methods.replaceUniSep(elIdField)
+                    setTimeout( function() {
+                        if(typeof Object.hasOwn !== "undefined")
+                            valid = Object.hasOwn(dataTableService.methods.dataFilSrtTracker, field);
+                        else
+                            valid = dataTableService.methods.dataFilSrtTracker.hasOwnProperty(field);
+                        if(valid){
+                            dataTableService.methods.doSortOnField(field)
+                            deebo.methods.renderCurrData(null, field)
+                            reset.disabled = false
+                            if(!dataTableService.methods.currSelRows.length && dataTableService.methods.arefilSrtTrkPropsDefault())
+                                deebo.methods.resetCurrentData(null, field)
+                        }
+                        if(btn)
+                            btn.disabled = false
+                        if(span)
+                            span.style.removeProperty("opacity")
+                        deebo.methods.isSorting = false
+                    })
+                }catch(e){deebo.methods.isSorting = false}
             },
+
+            isSorting: false,
 
             filterBuildUp: [],
 
@@ -2710,8 +2736,8 @@ deebo.methods = function() {
                             cell.classList.add(symbolCls)
                             cell.setAttribute("data-symbol", sym)
                         }
-                        if(useTxt.ancs && useTxt.ancs.length)
-                            setTimeout( function() { deebo.methods.giveCellAncOptions(indx, elProp, useTxt.ancs) })
+                        // if(useTxt.ancs && useTxt.ancs.length)
+                        //     setTimeout( function() { deebo.methods.giveCellAncOptions(indx, elProp, useTxt.ancs) })
                         if(window.innerWidth >= deebo.methods.mouseEventBreak){
                             cell.addEventListener("mousemove", tblDragEvents.methods.checkItemBorderCursor)
                             cell.addEventListener("mousemove", tblDragEvents.methods.handleCellSizeAdjust)

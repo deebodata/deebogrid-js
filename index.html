@@ -64,7 +64,7 @@
         xhr.onreadystatechange = function() {
             if(xhr.readyState === 4){
                 try{
-                    let xhrdata = JSON.parse(xhr.responseText)//["result"]
+                    let xhrdata = JSON.parse(xhr.responseText)["result"]
                     if(xhr.status === 200){
                         xhrdata = deebo.methods.convertNeededCols(xhrdata)
                         dataTableService.methods.mainData = xhrdata.filter( function(d) { return true })
@@ -75,8 +75,7 @@
                 }catch(e){ deebo.methods.setLoading(e.message) }
             }
         }
-        xhr.timeout = 10000
-        xhr.open("GET", "http://127.0.0.1:8080/api/big-data-test", true)
+        xhr.open("GET", "https://d2ffvluimla00s.cloudfront.net/100k1763180699595.json", true)
         xhr.send()
         deebo.methods.setLoading()
     </script>
