@@ -750,7 +750,8 @@ deebo.methods = function() {
                             const head = document.getElementById("columnHeader" + elProp)
                             const filInp = document.getElementById("filter" + elProp)
                             const canEdit = deebo.methods.editable && !deebo.methods.shouldValidateEdit(prop, filInp);
-                            const notNum = (filInp && (filInp.getAttribute("type") != "number" || /(year|yr|fy)/g.test(prop.toLocaleLowerCase()))) ? true : false
+                            const notNum = (filInp && (filInp.getAttribute("type") != "number" || /(year|yr|fy)/g.test(prop.toLocaleLowerCase()))) ? true : false;
+                            const colStyle = dataTableService.methods.getColumnStyle(prop)
                             if(head && head.classList.contains("col-item-freeze"))
                                 cell.classList.add("col-item-freeze")
                             if(filInp && filInp.getAttribute("type") === "number")
@@ -769,6 +770,8 @@ deebo.methods = function() {
                             } else {
                                 cell.innerHTML = useTxt.value
                             }
+                            if(colStyle)
+                                cell.classList.add(colStyle + useTxt.value?.replace(/ /g, deebo.methods.uniSep))
                             if(sym){
                                 let symbolCls = ["$","€","£","¥","₣","₹"].indexOf(sym) > -1 ? "has-symbol-b" : "has-symbol";
                                 cell.classList.add(symbolCls)
@@ -1498,8 +1501,9 @@ deebo.methods = function() {
                         }
                         rule5 = ".data-cell{ border-bottom: 1px solid "+co2+"; border-right: 1px solid "+co2+"}"
                     }
+                    let el;
                     if(rule1 || rule1a || rule2 || rule3 || rule5 || rule6){
-                        const el = document.createElement("style")
+                        el = document.createElement("style")
                         document.head.appendChild(el)
                         if(rule1)
                             el.sheet.insertRule(rule1)
@@ -1514,7 +1518,42 @@ deebo.methods = function() {
                         if(rule6)
                             el.sheet.insertRule(rule6)
                     }
+                    deebo.methods.handleColumnCss(el)
                 }catch(e){}
+            },
+
+            handleColumnCss: function(cssSheet) {
+                const clen = dataTableService.methods.columnStyles.length
+                let i = 0;
+                if(clen){
+                    if(!cssSheet){
+                        cssSheet = document.createElement("style");
+                        document.head.appendChild(cssSheet)
+                    }
+                    if(cssSheet){
+                        for(i; i < clen; i++){
+                            let o = 0
+                            const cStyle = dataTableService.methods.columnStyles[i]
+                            const col = cStyle.column
+                            const csss = cStyle.css
+                            const csslen = csss.length
+                            const elCol = col.replace(/ /g, deebo.methods.uniSep)
+                            for(o; o < csslen; o++){
+                                const css = csss[o]
+                                const val = css.value
+                                let rule = (".data-cell-" + elCol + "-" + val?.replace(/ /g, deebo.methods.uniSep) + " {");
+                                for(const prop in css){
+                                    const cval = css[prop]
+                                    if(cval && prop !== "value")
+                                        rule += (prop.replace(/_/g, "-") + ": " + cval + "; ");
+                                }
+                                rule += "} ";
+                                if(cssSheet.sheet)
+                                    cssSheet.sheet.insertRule(rule)
+                            }
+                        }
+                    }
+                }
             },
 
             setUpPaginatorOnTblLoad: function() {
@@ -1759,6 +1798,7 @@ deebo.methods = function() {
                 const filInp = document.getElementById("filter" + elProp)
                 const canEdit = deebo.methods.editable && !deebo.methods.shouldValidateEdit(prop, filInp);
                 const notNum = (filInp && (filInp.getAttribute("type") != "number" || /(year|yr|fy)/g.test(prop.toLocaleLowerCase()))) ? true : false;
+                const colStyle = dataTableService.methods.getColumnStyle(prop)
                 if(head){
                     const cfree = "col-item-freeze"
                     const cmin = "col-header-minimized"
@@ -1785,6 +1825,8 @@ deebo.methods = function() {
                 } else {
                     cell.innerHTML = useTxt.value
                 }
+                if(colStyle)
+                    cell.classList.add(colStyle + useTxt.value?.replace(/ /g, deebo.methods.uniSep))
                 if(sym){
                     let symbolCls = ["$","€","£","¥","₣","₹"].indexOf(sym) > -1 ? "has-symbol-b" : "has-symbol";
                     cell.classList.add(symbolCls)
@@ -2886,7 +2928,7 @@ deebo.methods = function() {
                             btnx.className = "hide"
                     }
                 } else {
-                    if(!deebo.methods.filterBuildUp.find( f => f.target.value === val))
+                    if(!deebo.methods.filterBuildUp.find( function(f) {return f.target.value === val}))
                         deebo.methods.filterBuildUp.push(event)
                 }
             },
@@ -2953,7 +2995,8 @@ deebo.methods = function() {
                         const head = document.getElementById("columnHeader" + elProp)
                         const filInp = document.getElementById("filter" + elProp)
                         const canEdit = deebo.methods.editable && !deebo.methods.shouldValidateEdit(prop, filInp);
-                        const notNum = (filInp && (filInp.getAttribute("type") != "number" || /(year|yr|fy)/g.test(prop.toLocaleLowerCase()))) ? true : false
+                        const notNum = (filInp && (filInp.getAttribute("type") != "number" || /(year|yr|fy)/g.test(prop.toLocaleLowerCase()))) ? true : false;
+                        const colStyle = dataTableService.methods.getColumnStyle(prop)
                         if(head && head.classList.contains("col-item-freeze"))
                             cell.classList.add("col-item-freeze")
                         if(filInp && filInp.getAttribute("type") === "number")
@@ -2974,6 +3017,8 @@ deebo.methods = function() {
                         } else {
                             cell.innerHTML = useTxt.value
                         }
+                        if(colStyle)
+                            cell.classList.add(colStyle + useTxt.value?.replace(/ /g, deebo.methods.uniSep))
                         if(sym){
                             let symbolCls = ["$","€","£","¥","₣","₹"].indexOf(sym) > -1 ? "has-symbol-b" : "has-symbol";
                             cell.classList.add(symbolCls)
@@ -5113,7 +5158,7 @@ deebo.methods = function() {
                     {text: "6M", val: Math.ceil(365/2)}, {text: ytd, val: ytdNum},
                     {text: "1Y", val: 365}, {text: "5Y", val: ((365*5)+1)}]
                     if(!ytdNum)
-                        avail = avail.filter( a => a.text !== ytd)
+                        avail = avail.filter( function(a) {return a.text !== ytd})
                     const len = avail.length
                     const sel = document.createElement("select")
                     const eopt = document.createElement("option")
@@ -5899,6 +5944,22 @@ dataTableService.methods = function() {
                 { column: "Total Revenue", symbol: "$" },
                 { column: "Total Cost", symbol: "$" },
             ],
+
+            columnStyles: [
+                { 
+                    column: "party", 
+                    css: [
+                        { value: "Republican", color: "red", font_size: "18px" },
+                        { value: "Democrat", color: "blue", font_size: "18px" },
+                        { value: "Independent", color: "green", font_size: "18px" },
+                    ] 
+                },
+            ],
+
+            getColumnStyle: function(col) {
+                const foundCol = dataTableService.methods.columnStyles.find( function(c) {return c.column === col})?.column
+                return foundCol ? ("data-cell-" + foundCol + "-") : "";
+            },
 
             getNewTrackerObj: function(colName) {
                 const symbol = dataTableService.methods.columnSymbols.filter( function(c){ return c.column === colName })[0]?.symbol?.substring(0, 2);
