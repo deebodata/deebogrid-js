@@ -6080,7 +6080,7 @@ dataTableService.methods = function() {
                             if(typeof colVal === "string")
                                 return (colVal == filterVal || colVal.startsWith(filterVal) || colVal.indexOf(filterVal) > -1)
                             if(typeof colVal === "number")
-                                return (colVal == filterVal || colVal.toString().startsWith(filterVal) || colVal.toString().indexOf(filterVal) > -1)
+                                return (colVal == filterVal)//assume equals
                             if(deebo.methods.isADateObject(filterVal) && deebo.methods.isADateObject(colVal))
                                 return Math.abs(colVal.getTime() - filterVal.getTime()) < sixHrs
                             return colVal == filterVal
