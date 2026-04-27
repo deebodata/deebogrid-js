@@ -1459,6 +1459,21 @@ deebo.methods = function() {
                         e.target.innerHTML = useTxt.value;
                     if(cell && deebo.methods.listenToCellDraggerMouseMove)
                         cell.classList.add("dragger-cell-focused")
+                    if(cell){
+                        const colStyle = dataTableService.methods.getColumnStyle(realProp)
+                        if(colStyle){
+                            let c = 0;
+                            const clen = cell.classList.length
+                            const cReg = new RegExp(colStyle, "g")
+                            for(c; c < clen; c++){
+                                const ccls = cell.classList[c]
+                                if(ccls && cReg.test(ccls) && ccls !== "data-cell-riiight" && ccls !== "data-cell-ceeenter"){
+                                    cell.classList.remove(ccls)
+                                    cell.classList.add(colStyle + useTxt.value?.replace(/ /g, deebo.methods.uniSep))
+                                }
+                            }
+                        }
+                    }
                     deebo.methods.blockEventsInCells()
                     // if(useTxt.ancs && useTxt.ancs.length)
                     //     deebo.methods.giveCellAncOptions(deebo.methods.currEditIndex, col, useTxt.ancs)
