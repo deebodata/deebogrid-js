@@ -3210,6 +3210,27 @@ deebo.methods = function() {
                     return (" &bull; " + srtinfo)
                 return "";
             },
+
+            initListenersAdded: false,
+
+            initListeners: function() {
+                if(!deebo.methods.initListenersAdded){
+                    const tlFilt = document.getElementById("topLevelDataFilter")
+                    const btnReset = document.getElementById("btnReset")
+                    if(tlFilt){
+                        tlFilt.oninput = deebo.methods.filterOnKeyUp
+                        tlFilt.onkeyup = deebo.methods.filterOnKeyUp
+                    }
+                    if(btnReset)
+                        btnReset.addEventListener("click", deebo.methods.resetCurrentData)
+                    document.getElementById("btnXSelRows").addEventListener("click", deebo.methods.clearSelectedRows)
+                    document.getElementById("btnTogSelRows").addEventListener("click", deebo.methods.toggleSelectedRows)
+                    document.getElementById("fCellDragger").addEventListener("focus", deebo.methods.focusCellDragger)
+                    window.addEventListener("resize", deebo.methods.clearValidatedEdit)
+                    window.addEventListener("scroll", deebo.methods.clearValidatedEdit)
+                    deebo.methods.initListenersAdded = true
+                }
+            },
         }
 
         return home
@@ -3971,20 +3992,4 @@ tblDragEvents.methods = function() {
     }()
 }()
 
-document.addEventListener("DOMContentLoaded", function() {
-    try{
-        const tlFilt = document.getElementById("topLevelDataFilter")
-        const btnReset = document.getElementById("btnReset")
-        if(tlFilt){
-            tlFilt.oninput = deebo.methods.filterOnKeyUp
-            tlFilt.onkeyup = deebo.methods.filterOnKeyUp
-        }
-        if(btnReset)
-            btnReset.addEventListener("click", deebo.methods.resetCurrentData)
-        document.getElementById("btnXSelRows").addEventListener("click", deebo.methods.clearSelectedRows)
-        document.getElementById("btnTogSelRows").addEventListener("click", deebo.methods.toggleSelectedRows)
-        document.getElementById("fCellDragger").addEventListener("focus", deebo.methods.focusCellDragger)
-        window.addEventListener("resize", deebo.methods.clearValidatedEdit)
-        window.addEventListener("scroll", deebo.methods.clearValidatedEdit)
-    }catch(e){}
-})
+document.addEventListener("DOMContentLoaded", deebo.methods.initListeners)
