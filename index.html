@@ -3,9 +3,12 @@
     <link rel="stylesheet" href="./data-grid-enterprise.css">
 </head>
 <body>
-    <div class="hidden-cols" ></div>
-    <div class="controls" >
-        <input type="text" id="topLevelDataFilter" name="topLevelDataFilter" placeholder="Filter any column..." />
+    <div class="hidden-cols"></div>
+    <div class="controls">
+        <input type="text" id="topLevelDataFilter" name="topLevelDataFilter" placeholder="Filter any column..." autocomplete="off" />
+        <button type="button" class="hide no-btn btn-clear-grp">
+            <i class="material-icons error-message heavy v-mid" aria-hidden="false">close</i>&nbsp;<span class="md-text v-mid">Grouping</span>
+        </button>
         <button type="button" id="btnCharts" class="no-btn btn-chart" disabled>
             <i class="material-icons v-mid" aria-hidden="false">bar_chart</i>&nbsp;<span class="v-mid">Insights</span>
         </button>
@@ -28,34 +31,41 @@
     </div>
     <div id="tableFooter" class="hide">
         <div class="paginator">
-            <div class="paginator-half-wid">
+            <div class="three-qtr-wid">
                 <div id="totalRows" class="inline v-mid semi-heavy lg-text"></div>&nbsp;<div class="inline v-mid">rows</div>
+            </div><div class="qtr-wid right">
+                <label class="skip-lbl" for="skipTo">Jump To Row</label>&nbsp;&nbsp;<div class="skip-to-contain"><input type="number" min="1"
+                name="skipTo" id="skipTo" placeholder="Jump to..." />
+                <div id="skipToOptions" class="skip-to-options-hide"></div></div>
             </div>
         </div>
     </div>
     <div id="selectedRowsInsights" class="hide"></div>
-    <div class="right pad-top-teen">
-        <div class="relly">
-            <div id="ddSelect" class="deebo-dd-select-hide deebo-dd-export">
-                <div class="deebo-dd-opt deebo-dd-export">
-                    <button type="button" id="btnExportCsv" class="btn-export no-btn">CSV</button>
-                </div>
-                <div class="deebo-dd-opt deebo-dd-export">
-                    <button type="button" id="btnExportJson" class="btn-export no-btn">JSON</button>
-                </div>
-                <div class="deebo-dd-opt deebo-dd-export">
-                    <button type="button" id="btnExportPsv" class="btn-export no-btn">PSV</button>
-                </div>
-                <div class="deebo-dd-opt deebo-dd-export">
-                    <button type="button" id="btnExportTsv" class="btn-export no-btn">TSV</button>
+    <div class="right pad-top-thirty">
+        <div id="canGroupByContain" class="inline-b deebo-dd-contain-div"></div><div 
+        id="exportContain" class="inline-b deebo-dd-contain-div">
+            <div class="relly">
+                <div id="ddSelect" class="deebo-dd-select-hide deebo-dd-export">
+                    <div class="deebo-dd-opt deebo-dd-export">
+                        <button type="button" id="btnExportCsv" class="btn-export no-btn">CSV</button>
+                    </div>
+                    <div class="deebo-dd-opt deebo-dd-export">
+                        <button type="button" id="btnExportJson" class="btn-export no-btn">JSON</button>
+                    </div>
+                    <div class="deebo-dd-opt deebo-dd-export">
+                        <button type="button" id="btnExportPsv" class="btn-export no-btn">PSV</button>
+                    </div>
+                    <div class="deebo-dd-opt deebo-dd-export">
+                        <button type="button" id="btnExportTsv" class="btn-export no-btn">TSV</button>
+                    </div>
                 </div>
             </div>
-        </div>
-        <div class="deebo-dd-contain deebo-dd-export flex-center">
-            <button class="btn-deebo-dd deebo-dd-export no-btn">
-                <span>Export</span>
-                <i class="material-icons" aria-hidden="false">keyboard_arrow_down</i>
-            </button>
+            <div class="deebo-dd-contain deebo-dd-export flex-center" tabindex="0">
+                <button class="btn-deebo-dd deebo-dd-export no-btn" disabled>
+                    <span>Export</span>
+                    <i class="material-icons" aria-hidden="false">keyboard_arrow_down</i>
+                </button>
+            </div>
         </div>
     </div>
     <script src="./deebo-js-grid-enterprise.js"></script>
@@ -75,7 +85,7 @@
                 }catch(e){ deebo.methods.setLoading(e.message) }
             }
         }
-        xhr.open("GET", "https://d2ffvluimla00s.cloudfront.net/senators.json", true)
+        xhr.open("GET", "https://d2ffvluimla00s.cloudfront.net/stim_imgs_comm.json", true)
         xhr.send()
         deebo.methods.setLoading()
     </script>

@@ -26,6 +26,7 @@ deebo.methods = function() {
             linkCell: null,
             linkCells: [],
             columnNames: [],
+            canTabScroll: true,
             currEditCol:"",//for cell editing
             currEditIndex: -1,
             uProvidedPrimKey: null,
@@ -1054,6 +1055,10 @@ deebo.methods = function() {
                 deebo.methods.listenToCellDraggerMouseMove = true;
             },
 
+            blurCellDragger: function() {
+                deebo.methods.execValClear(true)
+            },
+
             settleCellDragger: function() {
                 const els = document.getElementsByClassName("dragger-cell-focused")
                 const len = els.length
@@ -1918,14 +1923,18 @@ deebo.methods = function() {
                     iArr.textContent = "arrow_upward"
                     name.onclick = deebo.methods.doSortOnClick
                     arr.appendChild(iArr)
+                    arr.onmousedown = deebo.methods.preventTabScroll
                     arr.onclick = deebo.methods.doSortOnClick
+                    arr.onfocus = deebo.methods.checkTabHorizScroll
                     min.type = "button"
                     min.id = "btnMin" + useCol
                     min.className = "btn-min-col"
                     iMin.className = "material-icons"
                     iMin.textContent = "minimize"
                     min.appendChild(iMin)
+                    min.onmousedown = deebo.methods.preventTabScroll
                     min.onclick = deebo.methods.minimizeColumn
+                    min.onfocus = deebo.methods.checkTabHorizScroll
                     xfil.id = "xfil" + useCol//dont chhange
                     xfil.className = "hide"
                     xfil.innerHTML = "&times;";
@@ -1943,7 +1952,6 @@ deebo.methods = function() {
                     if(inputType === "date")
                         inp.onchange = deebo.methods.filterOnKeyUp
                     inp.onclick = function(e) { e && e.stopPropagation() }
-                    inp.addEventListener("focus", deebo.methods.killSelFilOpts)
                     div.appendChild(name)//keep first
                     div.appendChild(arr)
                     div.appendChild(min)
@@ -2187,6 +2195,77 @@ deebo.methods = function() {
                         return event.keyCode === 13
                     }
                     return false
+                }
+                return false
+            },
+
+            isTabKey: function(event) {
+                if(event){
+                    if (typeof event.key !== "undefined") {
+                        return event.key === 'Tab'
+                    } else if (typeof event.keyIdentifier !== "undefined") {
+                        return event.keyIdentifier === 'Tab'
+                    } else if (typeof event.keyCode !== "undefined") {
+                        return event.keyCode === 9
+                    }
+                    return false
+                }
+                return false
+            },
+
+            keyCanSearch: function(event) {
+                return (deebo.methods.isSearchKey(event) ||
+                deebo.methods.isBackKey(event) ||
+                deebo.methods.isDeleteKey(event) ||
+                deebo.methods.isSpaceKey(event))
+            },
+
+            isSearchKey: function(event) {
+                if (event && event.key !== undefined) {
+                    return /^[A-Za-z0-9, ()&:\-.,#$!@]$/.test(event.key)
+                } else if (event.keyIdentifier !== undefined) {
+                    return (/Key([a-zA-Z])/.test(event.keyIdentifier) || 
+                            deebo.methods.mystartsWith(event.keyIdentifier, "Digit") ||
+                            deebo.methods.mystartsWith(event.keyIdentifier, "Numpad"))
+                } else if (event.keyCode !== undefined) {
+                    return ((event.keyCode >= 65 && event.keyCode <= 90) || 
+                            (event.keyCode >= 48 && event.keyCode <= 57) ||
+                            (event.keyCode >= 96 && event.keyCode <= 105))
+                }
+                return false
+            },
+
+            isBackKey: function(event) {
+                if (event && event.key !== undefined) {
+                    return event.key === 'Backspace'
+                } else if (event.keyIdentifier !== undefined) {
+                    return event.keyIdentifier === 'Backspace'
+                } else if (event.keyCode !== undefined) {
+                    return event.keyCode === 8
+                }
+                return false
+            },
+
+            isDeleteKey: function(event) {
+                if (event && event.key !== undefined) {
+                    return event.key === 'Delete'
+                } else if (event.keyIdentifier !== undefined) {
+                    return event.keyIdentifier === 'Delete'
+                } else if (event.keyCode !== undefined) {
+                    return event.keyCode === 46
+                }
+                return false
+            },
+
+            isSpaceKey: function(event) {
+                if (event && event.key !== undefined) {
+                    return event.key == " "
+                } else if (event.keyIdentifier !== undefined) {
+                    return event.keyIdentifier == " "
+                } else if (event.keyCode !== undefined) {
+                    return event.keyCode === 32
+                } else if (event.code !== undefined) {
+                    return event.code === "Space"
                 }
                 return false
             },
@@ -2508,11 +2587,29 @@ deebo.methods = function() {
                 return (val && typeof val === "string") ? val.replace(/\Z_/g, " ") : (val ? val : null)
             },
 
+            preventTabScroll: function() {
+                deebo.methods.canTabScroll = false
+            },
+
+            checkTabHorizScroll: function(e) {
+                if(e && deebo.methods.canTabScroll && e.target && e.target.id){
+                    const id = e.target.id.replace(/btn(Sort|Min)/g, "")
+                    const colH = document.getElementById("columnHeader" + id)
+                    const dtb = document.getElementById("dataTableBody")
+                    let left = (colH.getBoundingClientRect().left-50)
+                    if(colH){
+                        left -= (deebo.methods.rowNumbers ? 75 : 0);
+                        dtb.scrollBy(left, 0)
+                    }
+                }
+            },
+
             doSortOnClick: function(event) {
                 if(event && typeof event.stopPropagation === "function")
                     event.stopPropagation()
                 if(deebo.methods.isSorting)
                     return;
+                deebo.methods.canTabScroll = true
                 try{
                     let valid = false
                     let btn;
@@ -2597,6 +2694,8 @@ deebo.methods = function() {
                 if((field || topFilt) && !dataTableService.methods.isFiltering){
                     let manual;
                     try{ manual = Object.keys(event.target).length === 2 ? true : false }catch(e){}
+                    if(!manual && event && !deebo.methods.keyCanSearch(event))
+                        return;
                     dataTableService.methods.isFiltering = true
                     if(topFilt){
                         dataTableService.methods.easyFilter((val || ""), dataTableService.methods.mainData, dataTableService.methods.sortOrder)
@@ -2907,6 +3006,7 @@ deebo.methods = function() {
                 event && event.stopPropagation()
                 const col = event.target.id ? event.target.id.replace(/(columnHeader|btnM(in|ax))/g, "") : event.target.parentElement?.id.replace(/(columnHeader|btnM(in|ax))/g, "")
                 const currCol = dataTableService.methods.dataFilSrtTracker[deebo.methods.replaceUniSep(col)]
+                deebo.methods.canTabScroll = true
                 if(col && currCol){
                     const head = document.getElementById("columnHeader" + col)
                     const cells = document.getElementsByClassName("data-cell-" + col)
@@ -3217,6 +3317,7 @@ deebo.methods = function() {
                 if(!deebo.methods.initListenersAdded){
                     const tlFilt = document.getElementById("topLevelDataFilter")
                     const btnReset = document.getElementById("btnReset")
+                    const fdrag = document.getElementById("fCellDragger")
                     if(tlFilt){
                         tlFilt.oninput = deebo.methods.filterOnKeyUp
                         tlFilt.onkeyup = deebo.methods.filterOnKeyUp
@@ -3225,7 +3326,10 @@ deebo.methods = function() {
                         btnReset.addEventListener("click", deebo.methods.resetCurrentData)
                     document.getElementById("btnXSelRows").addEventListener("click", deebo.methods.clearSelectedRows)
                     document.getElementById("btnTogSelRows").addEventListener("click", deebo.methods.toggleSelectedRows)
-                    document.getElementById("fCellDragger").addEventListener("focus", deebo.methods.focusCellDragger)
+                    if(fdrag){
+                        fdrag.addEventListener("focus", deebo.methods.focusCellDragger)
+                        fdrag.addEventListener("blur", deebo.methods.blurCellDragger)
+                    }
                     window.addEventListener("resize", deebo.methods.clearValidatedEdit)
                     window.addEventListener("scroll", deebo.methods.clearValidatedEdit)
                     deebo.methods.initListenersAdded = true
