@@ -3136,6 +3136,10 @@ deebo.methods = function() {
                 deebo.methods.canTabScroll = false
             },
 
+            allowTabScroll: function() {
+                deebo.methods.canTabScroll = true
+            },
+
             checkTabHorizScroll: function(e) {
                 if(e && deebo.methods.canTabScroll && e.target && e.target.id){
                     const id = e.target.id.replace(/btn(Sort|Min)/g, "")
@@ -3162,7 +3166,7 @@ deebo.methods = function() {
                     event.stopPropagation()
                 if(deebo.methods.isSorting)
                     return;
-                deebo.methods.canTabScroll = true
+                deebo.methods.allowTabScroll()
                 try{
                     let valid = false
                     let btn;
@@ -3554,6 +3558,7 @@ deebo.methods = function() {
                 deebo.methods.removeAllFreezeCols()
                 deebo.methods.columnOfInterest = ""
                 deebo.methods.currGroupValues = []
+                dataTableService.methods.currGroup = ""
                 dataTableService.methods.setTableBounds()
                 dataTableService.methods.resetFilSrtTracker()
                 dataTableService.methods.currFilData = dataTableService.methods.mainData?.filter( function(d) { return true })
@@ -3597,7 +3602,7 @@ deebo.methods = function() {
                 event && event.stopPropagation()
                 const col = event.target.id ? event.target.id.replace(/(columnHeader|btnM(in|ax))/g, "") : event.target.parentElement?.id.replace(/(columnHeader|btnM(in|ax))/g, "")
                 const currCol = dataTableService.methods.dataFilSrtTracker[deebo.methods.replaceUniSep(col)]
-                deebo.methods.canTabScroll = true
+                deebo.methods.allowTabScroll()
                 if(col && currCol){
                     const head = document.getElementById("columnHeader" + col)
                     const cells = document.getElementsByClassName("data-cell-" + col)
@@ -7314,6 +7319,11 @@ groupBy.methods = function() {
                     const init = Math.max(groupBy.methods.openGbGrids[realVal].panelHeight/defNum);
                     let didXScrl = false
                     const tbody = document.getElementById('panelDataGrid' + elVal)
+                    let hidden = []
+                    for(const prop in dataTableService.methods.dataFilSrtTracker){
+                        if(dataTableService.methods.dataFilSrtTracker[prop].minimize)
+                            hidden.push(prop)
+                    }
                     const addCell = function(text, prop, row, indx, vis) {
                         const cell = document.createElement("div")
                         const elProp = prop?.replace(/ /g, deebo.methods.uniSep) 
@@ -7323,6 +7333,8 @@ groupBy.methods = function() {
                         if(prop === dataTableService.methods.firstCol)
                             cell.className += " holding-check"
                         if(vis){
+                            if(hidden.indexOf(prop) > -1)
+                                cell.className += " col-header-minimized"
                             cell.style.width = dataTableService.methods.dataFilSrtTracker[prop]?.colWidth || deebo.methods.useColWid
                             cell.style.height = dataTableService.methods.defltRHgt
                             const head = document.getElementById("columnHeader" + elProp)
@@ -7453,6 +7465,7 @@ groupBy.methods = function() {
                 groupBy.methods.openGbGrids = {};
                 const len = isOpen.length;
                 if(len){
+                    deebo.methods.processGrouping(dataTableService.methods.currGroup)
                     setTimeout( function() {
                         for(i; i < len; i++){
                             const grp = isOpen[i]
@@ -7460,7 +7473,7 @@ groupBy.methods = function() {
                             if(btn)
                                 btn.click()
                         }
-                    })
+                    }, 150)
                 }
             },
 

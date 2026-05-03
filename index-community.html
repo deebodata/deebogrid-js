@@ -32,6 +32,28 @@
     </div>
     <script src="./deebo-js-grid-community.js"></script>
     <script>
+        <!-- where data is an array of objects e.g. [ { name: "dave" }, {name: "amy" } ] -->
+        var data = [ 
+            {date: "may 3, 2026", description: "Added Group By and Jump To Row functionality for JavaScript", version: "v1.1" },
+            {date: "may 3, 2026", description: "Enhanced grid accessibility related to Tab button", version: "v1.1" },
+            {date: "may 1, 2026", description: "Dropped support for React. Sorry, but our developer specializes in Angular and JavaScript. Upon further testing, we can't in all good conscience sell something that we can't expertly guarantee the quality of."},
+            {date: "april 27, 2026", description: "Update filter to check for equality on numeric columns by default if no comparison option is explicitly chosen", version: "v1.0" },
+            {date: "april 27, 2026", description: "Enterprise only: added columnStyles - pass a column name and list of css rules per value", version: "v1.0" }, 
+            {date: "april 26, 2026", description: "Added the typically expected behavior of sorting when the column name is clicked, not just the sort arrow", version: "v1.0" },
+            {date: "april 25, 2026", description: "Fixed bug where cells failed to display correctly after clearing all sorts", version: "v1.0" }, 
+            {date: "april 24, 2026", description: "https://deebodata.com/data-grid-community", version: "v1.0" },
+            {date: "april 22, 2026", description: "Added YTD option to line graph time span options", version: "v1.0" }, 
+        ];
+        deebo.methods.setLoading()//add an overlay while your backend api is responding
+        data = deebo.methods.convertNeededCols(data)
+        dataTableService.methods.mainData = data.filter( function(d) { return true })
+        dataTableService.methods.currFilData = data.filter( function(d) { return true })
+        dataTableService.methods.mainDataLen = dataTableService.methods.mainData.length
+        deebo.methods.buildInitUiDataTable(data, "#000035", "#e9e9e9", true)//any 2 css colors
+        //deebo.methods.buildInitUiDataTable(data, "black", "skyblue", true)//true in 4th arg blocks edits   
+        // //deebo.methods.buildInitUiDataTable(data, "black", "skyblue", true, true)//true in 5th arg hides row nums
+    </script>
+    <!-- <script>
         var xhr = new XMLHttpRequest()
         xhr.onreadystatechange = function() {
             if(xhr.readyState === 4){
@@ -50,5 +72,5 @@
         xhr.open("GET", "https://d2ffvluimla00s.cloudfront.net/100k1763180699595.json", true)
         xhr.send()
         deebo.methods.setLoading()
-    </script>
+    </script> -->
 </body>

@@ -1888,6 +1888,7 @@ deebo.methods = function() {
                     const row = rows[i]
                     row.style.width = wid
                 }
+                deebo.methods.useRowWid = wid
             },
 
             titleCase: function(str) {
@@ -2591,6 +2592,10 @@ deebo.methods = function() {
                 deebo.methods.canTabScroll = false
             },
 
+            allowTabScroll: function() {
+                deebo.methods.canTabScroll = true
+            },
+
             checkTabHorizScroll: function(e) {
                 if(e && deebo.methods.canTabScroll && e.target && e.target.id){
                     const id = e.target.id.replace(/btn(Sort|Min)/g, "")
@@ -2604,12 +2609,13 @@ deebo.methods = function() {
                 }
             },
 
+
             doSortOnClick: function(event) {
                 if(event && typeof event.stopPropagation === "function")
                     event.stopPropagation()
                 if(deebo.methods.isSorting)
                     return;
-                deebo.methods.canTabScroll = true
+                deebo.methods.allowTabScroll()
                 try{
                     let valid = false
                     let btn;
@@ -3006,7 +3012,7 @@ deebo.methods = function() {
                 event && event.stopPropagation()
                 const col = event.target.id ? event.target.id.replace(/(columnHeader|btnM(in|ax))/g, "") : event.target.parentElement?.id.replace(/(columnHeader|btnM(in|ax))/g, "")
                 const currCol = dataTableService.methods.dataFilSrtTracker[deebo.methods.replaceUniSep(col)]
-                deebo.methods.canTabScroll = true
+                deebo.methods.allowTabScroll()
                 if(col && currCol){
                     const head = document.getElementById("columnHeader" + col)
                     const cells = document.getElementsByClassName("data-cell-" + col)
