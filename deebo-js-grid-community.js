@@ -575,33 +575,13 @@ deebo.methods = function() {
                 if(val && deebo.methods.currColumnEdit){
                     const head = document.getElementById("columnHeader" + deebo.methods.currColumnEdit)
                     const cols = deebo.methods.getAllColsAtRuntime(true);
-                    const colLen = cols.length - deebo.methods.getMiniColCount()
+                    const colLen = cols.length
                     if(head)
                         head.style.width = val;
                     const allColW = deebo.methods.getAllColWidth(colLen)
                     deebo.methods.setDataRowWidthsOnMinimize(allColW)
                     deebo.methods.setRowSelChecksPlacement()
-                    deebo.methods.testHideMinBtn()
                     deebo.methods.clearValidatedEdit()
-                }
-            },
-
-            testHideMinBtn: function() {
-                let i = 0
-                const els = document.getElementsByClassName("btn-min-col")
-                const len = els.length
-                for(i; i < len; i++){
-                    const el = els[i]
-                    const col = el.id.replace(/btnMin/g, "")
-                    const ellf = el.getBoundingClientRect().left
-                    const srt = document.getElementById("btnSort" + col)
-                    if(srt){
-                        const srtrt = srt.getBoundingClientRect().right + 5;
-                        if(ellf < srtrt)
-                            el.classList.add("btn-min-col-hide")
-                        else
-                            el.className = "btn-min-col"
-                    }
                 }
             },
 
@@ -824,7 +804,6 @@ deebo.methods = function() {
                     window.addEventListener("click", deebo.methods.testEditDDs)
                     deebo.methods.handleTheme(color1, color2)
                     setTimeout( function() { 
-                        deebo.methods.testHideMinBtn()
                         deebo.methods.setColHeaderHgt()
                         deebo.methods.setHoldingCheckCls()
                         deebo.methods.setRowSelChecksPlacement()
@@ -874,7 +853,7 @@ deebo.methods = function() {
                 let o = 0
                 const useLen = horizLim || cols?.length || 0
                 for(o; o < useLen; o++){
-                    if(dataTableService.methods.dataFilSrtTracker[cols[o]] && !dataTableService.methods.dataFilSrtTracker[cols[o]].minimize)
+                    if(dataTableService.methods.dataFilSrtTracker[cols[o]])
                         deebo.methods.dblClickCol(cols[o]?.replace(/ /g, deebo.methods.uniSep))
                 }
             },
@@ -1421,8 +1400,6 @@ deebo.methods = function() {
                 const len = useCols.length
                 for(i; i < len; i++){
                     const el = useCols[i]
-                    if(el.classList.contains("col-header-minimized"))
-                        continue
                     const elbds = el.getBoundingClientRect()
                     if(elbds.left >= dataTableService.methods.tblLeft && elbds.right < dataTableService.methods.tblRight)
                         vCols.push(deebo.methods.replaceUniSep(el.id.replace(/columnHeader/g, "")))
@@ -1517,8 +1494,6 @@ deebo.methods = function() {
                 if(prop === dataTableService.methods.firstCol)
                     cell.className += " holding-check"
                 const dProp = dataTableService.methods.dataFilSrtTracker[prop]
-                if(dProp && dProp.minimize)
-                    cell.classList.add("col-header-minimized")
                 if(vis)
                     deebo.methods.updateCell(cell, prop, elProp, text, indx)
                 if(b4)
@@ -1536,11 +1511,8 @@ deebo.methods = function() {
                 const notNum = (filInp && (filInp.getAttribute("type") != "number" || /(year|yr|fy)/g.test(prop.toLocaleLowerCase()))) ? true : false;
                 if(head){
                     const cfree = "col-item-freeze"
-                    const cmin = "col-header-minimized"
                     if(head.classList.contains(cfree))
                         cell.classList.add(cfree)
-                    if(head.classList.contains(cmin))
-                        cell.classList.add(cmin)
                 }
                 if(filInp && filInp.getAttribute("type") === "number")
                     cell.classList.add("data-cell-riiight")
@@ -1905,9 +1877,7 @@ deebo.methods = function() {
                     const name = document.createElement("span")
                     const arr = document.createElement("button")
                     const iArr = document.createElement("i")
-                    const min = document.createElement("button")
                     const xfil = document.createElement("button")
-                    const iMin = document.createElement("i")
                     const inp = document.createElement("input")
                     div.style.width = deebo.methods.useColWid
                     div.className = "col-header"
@@ -1927,15 +1897,6 @@ deebo.methods = function() {
                     arr.onmousedown = deebo.methods.preventTabScroll
                     arr.onclick = deebo.methods.doSortOnClick
                     arr.onfocus = deebo.methods.checkTabHorizScroll
-                    min.type = "button"
-                    min.id = "btnMin" + useCol
-                    min.className = "btn-min-col"
-                    iMin.className = "material-icons"
-                    iMin.textContent = "minimize"
-                    min.appendChild(iMin)
-                    min.onmousedown = deebo.methods.preventTabScroll
-                    min.onclick = deebo.methods.minimizeColumn
-                    min.onfocus = deebo.methods.checkTabHorizScroll
                     xfil.id = "xfil" + useCol//dont chhange
                     xfil.className = "hide"
                     xfil.innerHTML = "&times;";
@@ -1955,7 +1916,6 @@ deebo.methods = function() {
                     inp.onclick = function(e) { e && e.stopPropagation() }
                     div.appendChild(name)//keep first
                     div.appendChild(arr)
-                    div.appendChild(min)
                     if(allowFreeze && CSS && CSS.supports && CSS.supports("position", "sticky")){//give freeze pane ability
                         const btnfz = document.createElement("button")
                         btnfz.type = "button"
@@ -1981,7 +1941,6 @@ deebo.methods = function() {
                         div.addEventListener("mouseup", tblDragEvents.methods.handleColResMouseUp)
                         deebo.methods.unbindMouseRemoveEvts(name)
                         deebo.methods.unbindMouseRemoveEvts(arr)
-                        deebo.methods.unbindMouseRemoveEvts(min)
                         deebo.methods.unbindMouseRemoveEvts(inp)
                         deebo.methods.unbindMouseRemoveEvts(xfil)
                     }
@@ -2798,11 +2757,6 @@ deebo.methods = function() {
                     return tbody.appendChild(row)
                 }
                 const colLen = deebo.methods.columnNames.length
-                let hidden = []
-                for(const prop in dataTableService.methods.dataFilSrtTracker){
-                    if(dataTableService.methods.dataFilSrtTracker[prop].minimize)
-                        hidden.push(prop)
-                }
                 const addCell = function(text, prop, row, indx, vis) {
                     const cell = document.createElement("div")
                     const elProp = prop?.replace(/ /g, deebo.methods.uniSep) 
@@ -2810,8 +2764,6 @@ deebo.methods = function() {
                     cell.className += (" data-cell-" + elProp)
                     cell.tabIndex = 0
                     if(vis){
-                        if(hidden.indexOf(prop) > -1)
-                            cell.className += " col-header-minimized"
                         const head = document.getElementById("columnHeader" + elProp)
                         const filInp = document.getElementById("filter" + elProp)
                         const canEdit = deebo.methods.editable && !deebo.methods.shouldValidateEdit(prop, filInp);
@@ -2872,7 +2824,7 @@ deebo.methods = function() {
                 const limit = Math.min(init, len)
                 const blw = document.getElementById("belowArea")
                 let horizLim = Math.min(deebo.methods.setMaxCols(window.innerWidth), colLen)
-                deebo.methods.useRowWid = deebo.methods.getAllColWidth(colLen - deebo.methods.getMiniColCount()) + "px";
+                deebo.methods.useRowWid = deebo.methods.getAllColWidth(colLen) + "px";
                 if(field && field !== "topLevelDataFilter"){
                     let room = 0
                     let offst = 3
@@ -2968,7 +2920,6 @@ deebo.methods = function() {
                 }
                 deebo.methods.clearSortInds()
                 deebo.methods.clickAllBtnFilXs()
-                deebo.methods.clearHiddenCols()
                 deebo.methods.clearSelectedRows()
                 deebo.methods.removeAllFreezeCols()
                 dataTableService.methods.setTableBounds()
@@ -2982,15 +2933,6 @@ deebo.methods = function() {
                     tRows.textContent = dct
                     deebo.methods.handleFilSDataStr(tRows)
                 }
-            },            
-
-            getMiniColCount: function() {
-                let o = 0
-                for(const prop in dataTableService.methods.dataFilSrtTracker){
-                    if(dataTableService.methods.dataFilSrtTracker[prop].minimize)
-                        o += 1
-                }
-                return o
             },
 
             getColFrmClsList: function(el, root) {
@@ -3008,143 +2950,6 @@ deebo.methods = function() {
                 }
             },
 
-            minimizeColumn: function(event) {
-                event && event.stopPropagation()
-                const col = event.target.id ? event.target.id.replace(/(columnHeader|btnM(in|ax))/g, "") : event.target.parentElement?.id.replace(/(columnHeader|btnM(in|ax))/g, "")
-                const currCol = dataTableService.methods.dataFilSrtTracker[deebo.methods.replaceUniSep(col)]
-                deebo.methods.allowTabScroll()
-                if(col && currCol){
-                    const head = document.getElementById("columnHeader" + col)
-                    const cells = document.getElementsByClassName("data-cell-" + col)
-                    const btnMin = document.getElementById("btnMin" + col)
-                    if(!head || !cells.length)
-                        return alert("Please undo a filter to return some rows before toggling column visibility.")
-                    if(btnMin)
-                        btnMin.disabled = true
-                    if(/btnMax/g.test(event.target.id)){
-                        const hidC = document.getElementsByClassName("hidden-cols")
-                        if(hidC.length){
-                            hidC[0].removeChild(event.target)
-                            if(!hidC[0].children.length){
-                                hidC[0].className = "hidden-cols"
-                                hidC[0].style.removeProperty("padding")
-                            }
-                        }
-                    }
-                    if(head && cells.length){
-                        const len = cells.length
-                        const body = document.getElementById("dataTableBody")
-                        const wid = window.innerWidth
-                        const cols = deebo.methods.getAllColsAtRuntime(true)
-                        const maxCols = deebo.methods.setMaxCols(wid)
-                        let z = 0; let n = 0;
-                        const colEls = document.getElementsByClassName("col-header")
-                        const allcells = document.getElementsByClassName("data-cell")
-                        const hEllen = cols.length
-                        const cElLen = allcells.length
-                        const normProp = deebo.methods.replaceUniSep(col)
-                        if(!currCol.minimize){//hide it
-                            dataTableService.methods.dataFilSrtTracker[normProp].minimize = true
-                            dataTableService.methods.sortOrder = dataTableService.methods.sortOrder.filter( function(s) { return s !== normProp })
-                            const el = document.getElementById("sortInd" + col)
-                            if(el)
-                                el.parentElement.removeChild(el)
-                            const bodyW = body.getBoundingClientRect().width-16
-                            const colLen = cols.length - deebo.methods.getMiniColCount()
-                            deebo.methods.useColWid = Math.ceil(bodyW/Math.min(colLen, maxCols)) + "px"
-                            let i = 0;
-                            head.classList.add("col-header-minimized")
-                            head.style.removeProperty("width")
-                            for(i; i < len; i++){
-                                cells[i].style.removeProperty("width")
-                                cells[i].classList.add("col-header-minimized")
-                            }
-                            for(z; z < hEllen; z++){
-                                const cEl = colEls[z]
-                                if(cEl){
-                                    if(cEl.id !== ("columnHeader" + col)){
-                                        const prop = deebo.methods.replaceUniSep(cEl.id.replace(/columnHeader/g, ""))
-                                        cEl.style.width = dataTableService.methods.dataFilSrtTracker[prop]?.colWidth || deebo.methods.useColWid;
-                                    }
-                                }
-                            }
-                            for(n; n < cElLen; n++){
-                                const cEl = allcells[n]
-                                if(cEl){
-                                    if(!cEl.classList.contains("data-cell-" + col)){
-                                        const prop = deebo.methods.replaceUniSep(deebo.methods.getColFrmClsList(cEl, "data-cell-"))
-                                        cEl.style.width = dataTableService.methods.dataFilSrtTracker[prop]?.colWidth || deebo.methods.useColWid
-                                    }
-                                }
-                            }
-                            deebo.methods.addToHiddenCols(col)
-                            document.getElementById("btnReset").disabled = false
-                            setTimeout( function() { 
-                                dataTableService.methods.setTableBounds()
-                                deebo.methods.setDataRowWidthsOnMinimize(deebo.methods.getAllColWidth(colLen))
-                                setTimeout( function() { 
-                                    deebo.methods.setColsOnVisScreen()
-                                    document.getElementById("dataTableBody").scrollBy(1, 1)
-                                })
-                            }, 320)
-                        } else {//show it
-                            dataTableService.methods.dataFilSrtTracker[normProp].minimize = null
-                            const colLen = cols.length - deebo.methods.getMiniColCount()
-                            deebo.methods.useColWid = Math.ceil((body.getBoundingClientRect().width-16)/Math.min(colLen, maxCols)) + "px"
-                            head.classList.remove("col-header-minimized")
-                            head.style.width = deebo.methods.useColWid
-                            for(var i = (len-1); i >= 0; i--){
-                                cells[i].classList.remove("col-header-minimized")
-                                cells[i].style.width = deebo.methods.useColWid
-                            }
-                            let minCols = []
-                            for(const prop in dataTableService.methods.dataFilSrtTracker){
-                                if(dataTableService.methods.dataFilSrtTracker[prop].minimize){
-                                    const useProp = prop.replace(/ /g, deebo.methods.uniSep)
-                                    minCols.push("columnHeader"+useProp)
-                                    minCols.push("data-cell-"+useProp)
-                                }
-                            } 
-                            for(z; z < hEllen; z++){
-                                const cEl = colEls[z]
-                                if(cEl){
-                                    if(minCols.indexOf(cEl.id) < 0){
-                                        const prop = deebo.methods.replaceUniSep(cEl.id.replace(/columnHeader/g, ""))
-                                        cEl.style.width = dataTableService.methods.dataFilSrtTracker[prop]?.colWidth || deebo.methods.useColWid;
-                                    }
-                                }
-                            }
-                            let dcminCols = minCols.filter( function(m) { return m.startsWith("data-cell-") })
-                            const dcmLen = dcminCols.length
-                            for(n; n < cElLen; n++){
-                                const cEl = allcells[n]
-                                if(cEl){
-                                    let c = 0
-                                    const prop = deebo.methods.replaceUniSep(deebo.methods.getColFrmClsList(cEl, "data-cell-"))
-                                    if(!dcmLen)
-                                        cEl.style.width = dataTableService.methods.dataFilSrtTracker[prop]?.colWidth || deebo.methods.useColWid
-                                    for(c; c < dcmLen; c++){
-                                        if(!cEl.classList.contains(dcminCols[c]))
-                                            cEl.style.width = dataTableService.methods.dataFilSrtTracker[prop]?.colWidth || deebo.methods.useColWid
-                                    }
-                                }
-                            }
-                            
-                            setTimeout( function() { 
-                                dataTableService.methods.setTableBounds()
-                                deebo.methods.setDataRowWidthsOnMinimize(deebo.methods.getAllColWidth(colLen))
-                                document.getElementById("dataTableBody").scrollBy(1, 1)
-                            }, 320)
-                        }
-                        deebo.methods.setHoldingCheckCls()
-                    }
-                    if(btnMin)
-                        setTimeout( function() { btnMin.disabled = false }, 320)
-                    setTimeout(deebo.methods.setColHeaderHgt)
-                    setTimeout(deebo.methods.testHideMinBtn)
-                }
-            },
-
             setHoldingCheckCls: function() {
                 const els = document.getElementsByClassName("holding-check")
                 const len = els.length
@@ -3159,56 +2964,13 @@ deebo.methods = function() {
                     const klen = kids.length
                     for(o; o < klen; o++){
                         const kid = kids[o]
-                        if(/data-cell/g.test(kid.className) && !kid.classList.contains("col-header-minimized")){
+                        if(/data-cell/g.test(kid.className)){
                             dataTableService.methods.firstCol = deebo.methods.replaceUniSep(deebo.methods.getColFrmClsList(kid, "data-cell-"))
                             kid.classList.add("holding-check")
                             break
                         }
                     }
                 }
-            },
-
-            addToHiddenCols: function(col) {
-                const hC = document.getElementsByClassName("hidden-cols")
-                if(hC.length){
-                    const btn = document.createElement("button")
-                    btn.type = "button"
-                    btn.className = "btn-maximize-col"
-                    btn.textContent = deebo.methods.replaceUniSep(col)
-                    btn.id = "btnMax" + col
-                    btn.onclick = deebo.methods.minimizeColumn
-                    hC[0].appendChild(btn)
-                    hC[0].style.padding = "17px 15px 5px 4px"
-                }
-            },
-
-            clearHiddenCols: function() {
-                const hidC = document.getElementsByClassName("hidden-cols")
-                const colHs = document.querySelectorAll(".data-table-headers .col-header-minimized")
-                if(hidC.length){
-                    hidC[0].innerHTML = ""
-                    hidC[0].className = "hidden-cols"
-                    hidC[0].style.removeProperty("padding")
-                }
-                const cols = document.getElementsByClassName("col-header")
-                const wid = window.innerWidth
-                const maxCols = deebo.methods.setMaxCols(wid)
-                let len = cols.length || maxCols
-                deebo.methods.useColWid = Math.ceil((document.getElementById("dataTableBody").getBoundingClientRect().width-16)/Math.min(len, maxCols)) + "px"
-                const cLen = colHs.length
-                for(var i = (cLen-1); i >= 0; i--){
-                    colHs[i].className = "col-header"
-                    colHs[i].style.width = deebo.methods.useColWid
-                }
-                let o = 0
-                len = cols.length
-                for(o; o < len; o++){
-                    const prop = deebo.methods.replaceUniSep(cols[o].id.replace(/columnHeader/g, ""))
-                    const colWid = dataTableService.methods.dataFilSrtTracker[prop]?.["colWidth"]
-                    cols[o].style.width = colWid || deebo.methods.useColWid 
-                }
-                deebo.methods.setColHeaderHgt()
-                setTimeout(deebo.methods.setHoldingCheckCls)
             },
 
             clearSortInds: function() {
@@ -3680,8 +3442,8 @@ dataTableService.methods = function() {
                 for(const prop in dataTableService.methods.dataFilSrtTracker){
                     const elId= prop.replace(/ /g, deebo.methods.uniSep)
                     const obj = dataTableService.methods.dataFilSrtTracker[prop]
-                    if(obj && (obj.filter || obj.comparator || obj.sort || obj.minimize || obj.freeze)){
-                        const fm = ignoreColFM ? true : (!obj.minimize && !obj.freeze);
+                    if(obj && (obj.filter || obj.comparator || obj.sort || obj.freeze)){
+                        const fm = ignoreColFM ? true : (!obj.freeze);
                         const defComp = !obj.comparator || ["Equals", "Contains"].indexOf(obj.comparator) > -1;
                         if(!obj.filter && !obj.sort && fm && defComp && document.getElementById("selectComp" + elId)){
                             //let it go
@@ -4075,9 +3837,9 @@ tblDragEvents.methods = function() {
                 if(nwBtnFz && div && nwBtnFz.parentElement.id === div.id)//leave it alone
                     return;
                 const useCol = div?.id.replace(/columnHeader/g, "")
-                const btnMn = document.getElementById("btnMin" + useCol)
+                const btnSrt = document.getElementById("btnSort" + useCol)
                 nwBtnFz.parentElement.removeChild(nwBtnFz)
-                if(div && btnMn && !document.getElementsByClassName("btn-freeze-col").length){
+                if(div && btnSrt && !document.getElementsByClassName("btn-freeze-col").length){
                     const btnfz = document.createElement("button")
                     btnfz.type = "button"
                     const ifz = document.createElement("i")
@@ -4088,7 +3850,7 @@ tblDragEvents.methods = function() {
                     btnfz.appendChild(ifz)
                     btnfz.onclick = deebo.methods.freezeColOnClick
                     deebo.methods.unbindMouseRemoveEvts(btnfz)
-                    btnMn.insertAdjacentElement("afterend", btnfz)
+                    btnSrt.insertAdjacentElement("afterend", btnfz)
                 }
             },
 
