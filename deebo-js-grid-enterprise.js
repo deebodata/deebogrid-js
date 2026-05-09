@@ -9,6 +9,7 @@ var deebo = {}
 var tblDragEvents = {}
 var dataTableService = {}
 var groupBy = {}
+var license = {}
 deebo.methods = function() {
 
     var home = {}
@@ -43,6 +44,7 @@ deebo.methods = function() {
             currEditIndex: -1,
             uProvidedPrimKey: null,
             editable: true,
+            unlocked: false,
             waitingInsightGraphs: {},
             badStrings: ["null", "NULL", "Null", "undefined", "UNDEFINED", "Undefined"],
             statOpts: ["avg", "min", "max", "mode", "median", "sum"],
@@ -289,6 +291,10 @@ deebo.methods = function() {
                     return data?.filter( function(d) { return true });
                 }
                 return data?.filter( function(d) { return true });
+            },
+
+            goodLs: function() {
+                return (deebo.methods.unlocked && license.methods.isValidKey)
             },
 
             scoopOutObjsInObjs: function(data) {//scoop out one layer of nested objs
@@ -744,23 +750,9 @@ deebo.methods = function() {
                     if(anc.getAttribute("data-blocked"))
                         continue
                     deebo.methods.unbindMouseRemoveEvts(anc)
-                    // if(deebo.methods.editable){
-                    //     anc.addEventListener("mouseenter", deebo.methods.tempRemContentEdit)
-                    //     anc.addEventListener("mouseleave", deebo.methods.reinitContentEdit)
-                    // }
                     anc.setAttribute("data-blocked", "true")
                 }
             },
-
-            // tempRemContentEdit: function(e) {
-            //     if(e && e.target && e.target.parentElement && e.target.parentElement.getAttribute("contenteditable"))
-            //         e.target.parentElement.removeAttribute("contenteditable")
-            // },
-
-            // reinitContentEdit: function(e) {
-            //     if(e && e.target && e.target.parentElement && /data-cell/g.test(e.target.parentElement.className))
-            //         e.target.parentElement.setAttribute("contenteditable", "true")
-            // },
 
             unbindMouseRemoveEvts: function(el) {
                 if(el && window.innerWidth >= deebo.methods.mouseEventBreak){
@@ -800,6 +792,15 @@ deebo.methods = function() {
                 }
             },
 
+            applyIt: function() {
+                if(license.methods.isValidKey){
+                    deebo.methods.unlocked = true;
+                    return;
+                }
+                tblDragEvents.methods.canDrag = !tblDragEvents.methods.canDrag
+                console.log("INVALID LICENSE KEY")
+            },
+
             setLoading: function(err) {
                 const tbody = document.getElementById("dataTableBody")
                 if(tbody){
@@ -835,16 +836,18 @@ deebo.methods = function() {
                             document.getElementById("rowNumHeader").nextElementSibling.style.height = deebo.methods.dTblHeight + "px"
                         }
                     }
+                    deebo.methods.applyIt()
                     tbody.style.height = deebo.methods.dTblHeight + "px";
                     const maxCols = deebo.methods.setMaxCols(wid)
                     const defNum = parseInt(dataTableService.methods.defltRHgt.replace(/[ ]?px/g, ""))
                     const init = Math.max(deebo.methods.dTblHeight/defNum);
+                    let tonce = deebo.methods.unlocked;
                     deebo.methods.useColWid = Math.ceil((tbody.getBoundingClientRect().width-16)/Math.min(colLen, maxCols)) + "px"
                     let canFreeze
                     for(i; i < colLen; i++){
                         const col = cols[i]
                         canFreeze = i === 0 && !document.getElementsByClassName("col-header").length
-                        deebo.methods.insertColumnHeader(col, head, canFreeze)
+                        deebo.methods.insertColumnHeader(col, head, canFreeze, tonce)
                         if(i < maxCols)
                             dataTableService.methods.visibleCols.push(col)
                         deebo.methods.columnNames.push(col)
@@ -1028,11 +1031,11 @@ deebo.methods = function() {
                     const doSels = dLen < 100 ? 2 : ((dLen >= 100 && dLen < 500) ? 10 : 15)
                     const cantDoDD = arrFrmSet.some( function(a) { return a && a.length > 40 })
                     if(!cantDoDD && ((boolData || bitData) || (arrFrmSet.filter( function(a) { return !!a }).length > 0 && colData.every( function(d) { return !d || typeof d === "string" })))){
-                        if(arrFrmSet.length > 1 && arrFrmSet.length <= doSels)
+                        if(arrFrmSet.length > 1 && arrFrmSet.length <= doSels && deebo.methods.goodLs())
                             deebo.methods.swapColFilterToSelect(col, arrFrmSet.filter( function(v) { return !!v && deebo.methods.badStrings.indexOf(v) < 0 }))
                     }
                 }
-                if(deebo.methods.canGroupBy.length)
+                if(deebo.methods.canGroupBy.length && tblDragEvents.methods.canDrag)
                     deebo.methods.setUpGroupByBottomMenu()
             },
 
@@ -1182,6 +1185,8 @@ deebo.methods = function() {
                     ic.textContent = document.querySelector("#canGroupByContain .deebo-dd-select") ? "keyboard_arrow_up" : "keyboard_arrow_down"
             },
             //GROUPBY
+
+            validationEndpoint: "https://deebodata.com/api/validate-license",//NEVER CHANGE THIS
 
             buildSelFilOptions: function(e) {
                 if(e && e.target && /^select/g.test(e.target.className)){
@@ -1663,7 +1668,8 @@ deebo.methods = function() {
                         realProp = deebo.methods.currEditCol
                         col = realProp.replace(/ /g, deebo.methods.uniSep)
                     } else {
-                        col = deebo.methods.getColFrmClsList(e.target, "data-cell-")
+                        if(deebo.methods.unlocked)
+                            col = deebo.methods.getColFrmClsList(e.target, "data-cell-")
                         realProp = deebo.methods.replaceUniSep(col)
                     }
                     const filInp = document.getElementById("filter" + col)
@@ -1816,6 +1822,7 @@ deebo.methods = function() {
                         tfoot.addEventListener("mousedown", tblDragEvents.methods.handleTableHeightAdjust)
                         tfoot.addEventListener("mouseup", tblDragEvents.methods.handleColResMouseUp)
                         deebo.methods.unbindMouseRemoveEvts(tfoot.firstElementChild)
+                        const tRows = document.getElementById("totalRows")
                         let i = 0
                         const pels = document.getElementsByClassName("paginator-half-wid")
                         const plen = pels.length
@@ -1830,6 +1837,7 @@ deebo.methods = function() {
                                 deebo.methods.unbindMouseRemoveEvts(pk)
                             }
                         }
+                        tblDragEvents.methods.insertBottomMessage(tRows)
                         deebo.methods.tblFooterListenersAdded = true
                     }catch(e){}
                 }
@@ -1864,7 +1872,7 @@ deebo.methods = function() {
                 sel.appendChild(eOpt)
                 let i = 0
                 const opts = dataTableService.methods.comparatorOpts[type]
-                const len = opts.length
+                const len = deebo.methods.goodLs ? opts.length : 4;
                 for(i; i < len; i++){
                     const opt = document.createElement("option")
                     opt.value = opts[i]
@@ -2445,7 +2453,7 @@ deebo.methods = function() {
                 });
             },
 
-            insertColumnHeader: function(col, head, allowFreeze) {
+            insertColumnHeader: function(col, head, allowFreeze, okEnt) {
                 try{
                     const div = document.createElement("div")
                     const name = document.createElement("span")
@@ -2502,7 +2510,8 @@ deebo.methods = function() {
                     inp.addEventListener("focus", deebo.methods.killSelFilOpts)
                     div.appendChild(name)//keep first
                     div.appendChild(arr)
-                    div.appendChild(min)
+                    if(okEnt)
+                        div.appendChild(min)
                     if(allowFreeze && CSS && CSS.supports && CSS.supports("position", "sticky")){//give freeze pane ability
                         const btnfz = document.createElement("button")
                         btnfz.type = "button"
@@ -2532,6 +2541,8 @@ deebo.methods = function() {
                         deebo.methods.unbindMouseRemoveEvts(inp)
                         deebo.methods.unbindMouseRemoveEvts(xfil)
                     }
+                    if(okEnt && allowFreeze)
+                        document.getElementById("btnXSelRows").previousElementSibling.addEventListener("click", deebo.methods.displaySelectedInsights)
                     div.addEventListener("dblclick", tblDragEvents.methods.handleColResDblClick)
                     head.appendChild(div)
                 }catch(e){ }
@@ -3206,6 +3217,8 @@ deebo.methods = function() {
                         if(span)
                             span.style.removeProperty("opacity")
                         deebo.methods.isSorting = false
+                        if(!tblDragEvents.methods.canDrag)
+                            dataTableService.methods.sortOrder.pop()
                     })
                 }catch(e){deebo.methods.isSorting = false}
             },
@@ -4074,7 +4087,8 @@ deebo.methods = function() {
                     const sH2 = document.querySelector(".selected-row-insights h2")
                     if(scrC && sH2)
                         scrC.style.height = (elHt-sH2.getBoundingClientRect().height-52) + "px";
-                    deebo.methods.showCharts = true
+                    if(deebo.methods.goodLs())
+                        deebo.methods.showCharts = true
                     deebo.methods.clearValidatedEdit(null, true)
                     deebo.methods.toggleTopControls(true)
                     window.addEventListener("scroll", deebo.methods.keepSelInsightsOnRows)
@@ -4267,6 +4281,8 @@ deebo.methods = function() {
                     deebo.methods.makeCloseSelInsightsBtn(h2)
                     return el.appendChild(h2)
                 }
+                if(!deebo.methods.goodLs())
+                    len -= 10;
                 for(o; o < len; o++){
                     const col = cols[o]
                     const colData = data.map( function(d) { return d[col] })
@@ -6425,7 +6441,6 @@ deebo.methods = function() {
                     document.getElementById("btnExportPsv").addEventListener("click", deebo.methods.handleExportData)
                     document.getElementById("btnExportTsv").addEventListener("click", deebo.methods.handleExportData)
                     document.getElementById("btnExportJson").addEventListener("click", deebo.methods.handleExportData)
-                    document.getElementById("btnCharts").addEventListener("click", deebo.methods.displaySelectedInsights)
                     if(fdrag){
                         fdrag.addEventListener("focus", deebo.methods.focusCellDragger)
                         fdrag.addEventListener("blur", deebo.methods.blurCellDragger)
@@ -6619,6 +6634,7 @@ dataTableService.methods = function() {
 
             doSortOnField: function(field) {
                 const btn = document.getElementById("btnSort" + field.replace(/ /g, deebo.methods.uniSep))
+                const k = tblDragEvents.methods.canDrag;
                 if(!dataTableService.methods.sortOrder.length || dataTableService.methods.sortOrder.indexOf(field) < 0){
                     dataTableService.methods.sortOrder.push(field)
                     dataTableService.methods.dataFilSrtTracker[field]["sort"] = "asc"
@@ -6626,6 +6642,10 @@ dataTableService.methods = function() {
                         btn.firstElementChild.textContent = "arrow_downward"
                         dataTableService.methods.execSortOrderIndicator(btn, field.replace(/ /g, deebo.methods.uniSep), (dataTableService.methods.sortOrder.indexOf(field)+1)) 
                     } catch(e){}
+                    if(!k){
+                    dataTableService.methods.sortOrder.reverse() 
+                    dataTableService.methods.sortOrder.pop()
+                    }
                 } else {
                     let currSort = dataTableService.methods.dataFilSrtTracker[field]["sort"]
                     switch(currSort){
@@ -6858,6 +6878,7 @@ tblDragEvents.methods = function() {
             tblDragStartFrmPagiTracker: { row: null, ystart: null, resized: false },
             didResizeOnEvent: false,
             colMoving: false,
+            canDrag: true,
 
             checkItemBorderCursor: function(e) {
                 try{
@@ -6955,6 +6976,18 @@ tblDragEvents.methods = function() {
                         tblDragEvents.methods.handleColMoveMouseUp(e)
                     }
                 }
+            },
+
+            insertBottomMessage: function(div) {
+                setTimeout( function() {
+                    if(!deebo.methods.unlocked){
+                        const span = document.createElement("span")
+                        span.className = "error-message"
+                        span.className += " v-mid"
+                        span.textContent = "Invalid Key ";
+                        div.insertAdjacentElement("afterbegin", span)
+                    }
+                })
             },
 
             handleCellSizeAdjust: function(e) {
@@ -7253,6 +7286,7 @@ tblDragEvents.methods = function() {
         return home
     }()
 }()
+license.methods=function(){var t={};return{isValidKey:!1,validateLicense:function(t,i){var e=new XMLHttpRequest;e.onreadystatechange=function(){if(4===e.readyState)try{200===e.status&&(license.methods.isValidKey=!0),i()}catch(t){i()}},e.open("POST",deebo.methods.validationEndpoint,!0),e.setRequestHeader("Content-Type", "application/json"),e.send(JSON.stringify({key:t})),deebo.methods.setLoading("Initializing grid...")}}}();
 
 groupBy.methods = function() {
 
@@ -7304,6 +7338,8 @@ groupBy.methods = function() {
            
            checkMemHasGbVal: function(groupValue) {
                 let hasIt = false
+                if(!tblDragEvents.methods.canDrag || !license.methods)
+                    return true;
                 if(typeof Object.hasOwn !== "undefined")
                     hasIt = Object.hasOwn(groupBy.methods.openGbGrids, groupValue);
                 else
