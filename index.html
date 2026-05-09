@@ -70,23 +70,42 @@
     </div>
     <script src="./deebo-js-grid-enterprise.js"></script>
     <script>
-        var xhr = new XMLHttpRequest()
-        xhr.onreadystatechange = function() {
-            if(xhr.readyState === 4){
-                try{
-                    let xhrdata = JSON.parse(xhr.responseText)["result"]
-                    if(xhr.status === 200){
-                        xhrdata = deebo.methods.convertNeededCols(xhrdata)
-                        dataTableService.methods.mainData = xhrdata.filter( function(d) { return true })
-                        dataTableService.methods.currFilData = xhrdata.filter( function(d) { return true })
-                        dataTableService.methods.mainDataLen = dataTableService.methods.mainData.length
-                        deebo.methods.buildInitUiDataTable(xhrdata, null, null)
-                    }
-                }catch(e){ deebo.methods.setLoading(e.message) }
+        function initialize() {
+            var xhr = new XMLHttpRequest()
+            xhr.onreadystatechange = function() {
+                if(xhr.readyState === 4){
+                    try{
+                        let xhrdata = JSON.parse(xhr.responseText)["result"]
+                        if(xhr.status === 200){
+                            xhrdata = deebo.methods.convertNeededCols(xhrdata)
+                            dataTableService.methods.mainData = xhrdata.filter( function(d) { return true })
+                            dataTableService.methods.currFilData = xhrdata.filter( function(d) { return true })
+                            dataTableService.methods.mainDataLen = dataTableService.methods.mainData.length
+                            deebo.methods.buildInitUiDataTable(xhrdata, null, null)
+                        }
+                    }catch(e){ deebo.methods.setLoading(e.message) }
+                }
             }
+            xhr.open("GET", "https://d2ffvluimla00s.cloudfront.net/senators.json", true)
+            xhr.send()
+            deebo.methods.setLoading()
         }
-        xhr.open("GET", "https://d2ffvluimla00s.cloudfront.net/stim_imgs_comm.json", true)
-        xhr.send()
-        deebo.methods.setLoading()
+        license.methods.validateLicense('Dv1_1-1778034955259JS-GTRIAL10427', initialize)//2nd arg is your function handler
     </script>
+    <!-- <script>
+       function initialize() { -->
+          <!-- where data is an array of objects e.g. [ { name: "dave" }, {name: "amy" } ] -->
+    <!--       var data = [ { name: "Dave", salary: 200000, title: "CEO" }, {name: "Amy", salary: 164000, title: "CIO" }, 
+          {name: "Ted", salary: 60000, title: "QA Engineer" }, {name: "Sarah", salary: 95000, title: "Engineer" }, 
+          {name: "Adam", salary: 164000, title: "CFO" }, {name: "Krishna", salary: 105000, title: "Architect" }];
+          data = deebo.methods.convertNeededCols(data)
+          dataTableService.methods.mainData = data.filter( function(d) { return true })
+          dataTableService.methods.currFilData = data.filter( function(d) { return true })
+          dataTableService.methods.mainDataLen = dataTableService.methods.mainData.length
+          deebo.methods.buildInitUiDataTable(data, "#000035", "#e9e9e9")//any 2 css colors
+          //deebo.methods.buildInitUiDataTable(data, "black", "skyblue", true)//true in 4th arg blocks edits
+          //deebo.methods.buildInitUiDataTable(data, "black", "skyblue", true, true)//true in 5th arg hides row nums
+       }
+       license.methods.validateLicense('Dv1_1-1778034955259JS-GTRIAL10427', initialize)//2nd arg is your function handler
+    </script> -->
 </body>

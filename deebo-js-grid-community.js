@@ -231,7 +231,9 @@ deebo.methods = function() {
                                     if(val && typeof val === "string"){
                                         const tval = val.trim()
                                         const low = tval.toLocaleLowerCase()
-                                        if(deebo.methods.testShortDate(tval) || deebo.methods.testISODate(tval) || deebo.methods.testLongDate(low))
+                                        if(deebo.methods.testLongDate(low))
+                                            nData[i][prop] = deebo.methods.coerceDate(low)
+                                        if(!deebo.methods.testLongDate(low) && (deebo.methods.testShortDate(tval) || deebo.methods.testISODate(tval)))
                                             nData[i][prop] = deebo.methods.coerceDate(tval)
                                         if(deebo.methods.testISODate(tval.replace(/ /g, "")))
                                             nData[i][prop] = deebo.methods.coerceDate(tval.replace(/ /g, ""))
@@ -1911,8 +1913,10 @@ deebo.methods = function() {
                         if(inputType === "text")
                             inp.maxLength = 255
                     }
-                    if(inputType === "date")
+                    if(inputType === "date"){
+                        inp.oninput = deebo.methods.filterOnKeyUp
                         inp.onchange = deebo.methods.filterOnKeyUp
+                    }
                     inp.onclick = function(e) { e && e.stopPropagation() }
                     div.appendChild(name)//keep first
                     div.appendChild(arr)
@@ -2659,7 +2663,7 @@ deebo.methods = function() {
                 if((field || topFilt) && !dataTableService.methods.isFiltering){
                     let manual;
                     try{ manual = Object.keys(event.target).length === 2 ? true : false }catch(e){}
-                    if(!manual && event && !deebo.methods.keyCanSearch(event))
+                    if(!manual && event && event.type !== "change" && !deebo.methods.keyCanSearch(event))
                         return;
                     dataTableService.methods.isFiltering = true
                     if(topFilt){

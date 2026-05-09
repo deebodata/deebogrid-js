@@ -1,9 +1,9 @@
 /*
 EULA: By entering into this agreement with Cedar Technologies LLC, you agree that upon obtaining 1 license PER DEVELOPER, PER APPLICATION, 
 and once the javascript file has been downloaded to your local computer, you will not share or distribute the proprietary software using 
-content delivery networks, public git repositories, or npm. You may reference the downloaded file locally and on your website's hosting 
-server(s). Unless you opt out, the licensor - Cedar Technologies LLC, is responsible for bug fixes & adequate support for 1 Yr. upon purchase. 
-There is no license key involved.
+content delivery networks, public git repositories, or npm. You agree to refrain from attempting to subvert the license key. You may 
+reference the downloaded file locally and on your website's hosting server(s). Unless you opt out, the licensor - Cedar Technologies LLC, 
+is responsible for bug fixes & adequate support for 1 Yr. upon purchase. Your license key will be shown on screen once after payment.
 */
 var deebo = {}
 var tblDragEvents = {}
@@ -351,7 +351,9 @@ deebo.methods = function() {
                                     if(val && typeof val === "string"){
                                         const tval = val.trim()
                                         const low = tval.toLocaleLowerCase()
-                                        if(deebo.methods.testShortDate(tval) || deebo.methods.testISODate(tval) || deebo.methods.testLongDate(low))
+                                        if(deebo.methods.testLongDate(low))
+                                            nData[i][prop] = deebo.methods.coerceDate(low)
+                                        if(!deebo.methods.testLongDate(low) && (deebo.methods.testShortDate(tval) || deebo.methods.testISODate(tval)))
                                             nData[i][prop] = deebo.methods.coerceDate(tval)
                                         if(deebo.methods.testISODate(tval.replace(/ /g, "")))
                                             nData[i][prop] = deebo.methods.coerceDate(tval.replace(/ /g, ""))
@@ -2504,8 +2506,10 @@ deebo.methods = function() {
                         if(inputType === "text")
                             inp.maxLength = 255
                     }
-                    if(inputType === "date")
+                    if(inputType === "date"){
+                        inp.oninput = deebo.methods.filterOnKeyUp
                         inp.onchange = deebo.methods.filterOnKeyUp
+                    }
                     inp.onclick = function(e) { e && e.stopPropagation() }
                     inp.addEventListener("focus", deebo.methods.killSelFilOpts)
                     div.appendChild(name)//keep first
@@ -3264,7 +3268,7 @@ deebo.methods = function() {
                 if((field || topFilt) && !dataTableService.methods.isFiltering){
                     let manual;
                     try{ manual = Object.keys(event.target).length === 2 ? true : false }catch(e){}
-                    if(!manual && event && !deebo.methods.keyCanSearch(event))
+                    if(!manual && event && event.type !== "change" && !deebo.methods.keyCanSearch(event))
                         return;
                     dataTableService.methods.isFiltering = true
                     if(topFilt){
