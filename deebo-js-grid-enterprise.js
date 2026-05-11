@@ -46,6 +46,8 @@ deebo.methods = function() {
             editable: true,
             unlocked: false,
             waitingInsightGraphs: {},
+            autoScrollOnEdit: false,
+            setCellEditScrlActionTO: null,
             badStrings: ["null", "NULL", "Null", "undefined", "UNDEFINED", "Undefined"],
             statOpts: ["avg", "min", "max", "mode", "median", "sum"],
 
@@ -688,15 +690,15 @@ deebo.methods = function() {
                         }
                     }
                     if(cssProp === "width"){
-                        setTimeout( function() { deebo.methods.handleSingleColResize(val || deebo.methods.useColWid) })
+                        setTimeout( function() { deebo.methods.handleSingleColResize(val || deebo.methods.useColWid, forceCol) })
                         dataTableService.methods.dataFilSrtTracker[prop].colWidth = val || deebo.methods.useColWid
                     }                    
                 }
             },
 
-            handleSingleColResize: function(val) {
-                if(val && deebo.methods.currColumnEdit){
-                    const head = document.getElementById("columnHeader" + deebo.methods.currColumnEdit)
+            handleSingleColResize: function(val, col) {
+                if(val && (deebo.methods.currColumnEdit || col)){
+                    const head = document.getElementById("columnHeader" + (deebo.methods.currColumnEdit || col))
                     const cols = deebo.methods.getAllColsAtRuntime(true);
                     const colLen = cols.length - deebo.methods.getMiniColCount()
                     if(head)
@@ -1307,24 +1309,40 @@ deebo.methods = function() {
                     deebo.methods.clearValidatedEdit()
             },
 
-            setCellToEdit: function(e) {
+            setCellToEdit: function(e, noHScrl) {
                 if(tblDragEvents.methods.didResizeOnEvent)
                     return//was really a drag event, not click
                 const mdIndx = e.target?.getAttribute("data-index") || e.target?.parentElement?.getAttribute("data-index")//data-table-row
                 deebo.methods.currEditIndex = mdIndx
                 const cell = /data-cell/g.test(e.target.className) ? e.target : e.target.firstElementChild;
-                const ddReClick = cell.classList.contains("focused-el")
-                deebo.methods.clearAllFocused()
-                deebo.methods.clearDCellFcsd()
-                const dragger = document.getElementById("fCellDragger")
-                if(dragger)
-                    dragger.className = "focused-cell-dragger";
-                if(cell){//needs validation
+                if(cell){
                     const elProp = deebo.methods.getColFrmClsList(cell, "data-cell-")
                     const col = deebo.methods.replaceUniSep(elProp)
                     const filInp = document.getElementById("filter" + elProp)
                     const type = filInp?.getAttribute("type")
                     deebo.methods.currEditCol = col
+                    const cellWid = parseInt(deebo.methods.useColWid?.replace(/px/g, "") || "250")
+                    if(cell.getBoundingClientRect().right+cellWid >= dataTableService.methods.tblRight){
+                        if(!noHScrl){
+                            deebo.methods.autoScrollOnEdit = true
+                            const grid = document.getElementById("dataTableBody")
+                            grid.scrollBy((cellWid+1), 0)
+                        }
+                        if(!deebo.methods.setCellEditScrlActionTO){
+                            deebo.methods.setCellEditScrlActionTO = setTimeout( function() {if(deebo.methods.currEditCol === col) deebo.methods.setCellToEdit({target: cell}, true) })
+                            return deebo.methods.setCellEditScrlActionTO
+                        } else {
+                            window.clearTimeout(deebo.methods.setCellEditScrlActionTO)
+                        }
+                    }
+                    const ddReClick = cell.classList.contains("focused-el")
+                    deebo.methods.clearAllFocused()
+                    deebo.methods.clearDCellFcsd()
+                    const dragger = document.getElementById("fCellDragger")
+                    if(dragger)
+                        dragger.className = "focused-cell-dragger";
+                    deebo.methods.setCellEditScrlActionTO = null
+                    setTimeout( function() { deebo.methods.autoScrollOnEdit = false })
                     if(deebo.methods.cellEditNeedsVal(col, cell, filInp, type)){
                         deebo.methods.handleValidatedCellEditFocus(cell, type, cell.textContent)
                         if(dataTableService.methods.dataFilSrtTracker[col] && dataTableService.methods.dataFilSrtTracker[col].selDDVals){//only for sel dds
@@ -1332,8 +1350,8 @@ deebo.methods = function() {
                                 cell.blur()
                                 return deebo.methods.clearAllFocused()
                             }
-                            setTimeout( function() { cell.focus() }, 25)
-                            setTimeout( function() { cell.classList.add("focused-el") }, 150)
+                            setTimeout( function() {if(deebo.methods.currEditCol === col) cell.focus() }, 25)
+                            setTimeout( function() {if(deebo.methods.currEditCol === col) cell.classList.add("focused-el") }, 150)
                         }
                         return;
                     }
@@ -1378,6 +1396,7 @@ deebo.methods = function() {
                     rel.className = "relly"
                     const fd = document.getElementById("fCellDragger")
                     if(fd){
+                        fd.className = "focused-cell-dragger";
                         fd.style.left = (Math.ceil(cbds.left-rbds.left) + cbds.width - 4) + "px";
                         fd.style.top = (Math.ceil(cbds.bottom-rbds.top) - 4) + "px"
                     }
@@ -1386,7 +1405,7 @@ deebo.methods = function() {
 
             clearFCellDragger: function() {
                 const fd = document.getElementById("fCellDragger")
-                if(fd){
+                if(fd && !deebo.methods.autoScrollOnEdit){
                     fd.className = "hide"
                     fd.style.removeProperty("top")
                     fd.style.removeProperty("left")
@@ -1427,27 +1446,60 @@ deebo.methods = function() {
                     deebo.methods.clearCellDEdits()
                 setTimeout(deebo.methods.clearAllFocused)
                 try{
-                    window.removeEventListener("mouseup", deebo.methods.handleDraggerMU)
                     window.removeEventListener("mousemove", deebo.methods.handleCellDraggerEdit)
                     window.removeEventListener("selectstart", deebo.methods.stopWinSel)
                 }catch(e) {}
             },
 
-            handleDraggerMU: function() {
-                deebo.methods.listenToCellDraggerMouseMove = false
-                deebo.methods.clearDragEditFlag()
-                try{
-                    window.removeEventListener("mouseup", deebo.methods.handleDraggerMU)
+            handleDraggerMU: function(e) {
+                if(e && e.target && e.target.id && e.target.id.startsWith("selEdit"))
+                    return;
+                if(deebo.methods.listenToCellDraggerMouseMove){
+                    deebo.methods.listenToCellDraggerMouseMove = false
+                    deebo.methods.clearCellDEdits()
                     window.removeEventListener("mousemove", deebo.methods.handleCellDraggerEdit)
                     window.removeEventListener("selectstart", deebo.methods.stopWinSel)
-                    document.getElementById("fCellDragger").blur()
+                }
+                try{//always do this below
+                    window.removeEventListener("mouseup", deebo.methods.handleDraggerMU)
                 }catch(e){}
             },
 
+            handleDraggerKD: function(e) {
+                const row = document.getElementById("dataTableRow" + deebo.methods.currEditIndex)
+                if(row && deebo.methods.currEditCol){
+                    let targRow;
+                    let bds;
+                    if(e && deebo.methods.isDownKey(e))
+                        targRow = row.nextElementSibling
+    
+                    if(e && deebo.methods.isUpKey(e))
+                        targRow = row.previousElementSibling
+                    if(targRow){
+                        bds = targRow.getBoundingClientRect()
+                        targRow.addEventListener("mousemove", deebo.methods.handleCellDraggerEdit)
+                        const mouseEvent = new MouseEvent('mousemove', {
+                            view: window,
+                            bubbles: false,
+                            cancelable: false,
+                            clientX: bds.right, // X-coordinate relative to the viewport
+                            clientY: bds.bottom,  // Y-coordinate relative to the viewport
+                        });
+                        targRow.dispatchEvent(mouseEvent)
+                        targRow.removeEventListener("mousemove", deebo.methods.handleCellDraggerEdit)
+                        if(e.target.getBoundingClientRect().bottom > (dataTableService.methods.tblBot-100))
+                            document.getElementById("dataTableBody").scrollBy(0, deebo.methods.dTblHeight/2)
+                    }
+                }
+            },
+
             clearCellDEdits: function() {
+                const drg = document.getElementById("fCellDragger")
                 deebo.methods.clearFCellDragger()
                 deebo.methods.clearDCellFcsd()
                 deebo.methods.clearDragEditFlag()
+                if(drg)
+                    drg.removeEventListener("keydown", deebo.methods.handleDraggerKD)
             },
 
             clearDragEditFlag: function() {
@@ -1456,7 +1508,7 @@ deebo.methods = function() {
                 const len = rows.length
                 for(i; i < len; i++){
                     const row = rows[i]
-                    if(row)
+                    if(row && row.getAttribute("data-dragged"))
                         row.removeAttribute("data-dragged")
                 }
             },
@@ -1473,6 +1525,7 @@ deebo.methods = function() {
 
             focusCellDragger: function() {
                 const valEd = document.getElementById("validatedEdit")
+                const drg = document.getElementById("fCellDragger")
                 if(valEd){
                     valEd.innerHTML = "";
                     valEd.classList.add("invisible")
@@ -1481,10 +1534,24 @@ deebo.methods = function() {
                 " .data-cell-" + deebo.methods.currEditCol?.replace(/ /g, deebo.methods.uniSep))
                 if(cell)
                     cell.classList.add("dragger-cell-focused")
-                window.addEventListener("selectstart", deebo.methods.stopWinSel)
-                window.addEventListener("mousemove", deebo.methods.handleCellDraggerEdit)
+                if(drg)
+                    drg.addEventListener("keydown", deebo.methods.handleDraggerKD)
                 setTimeout( function() { window.addEventListener("mouseup", deebo.methods.handleDraggerMU) })
                 deebo.methods.listenToCellDraggerMouseMove = true;
+            },
+
+            focusCellDraggerFromMouseDown: function(e) {
+                window.addEventListener("selectstart", deebo.methods.stopWinSel)
+                window.addEventListener("mousemove", deebo.methods.handleCellDraggerEdit)
+                deebo.methods.listenToCellDraggerMouseMove = true;
+            },
+
+            handleFDragTab: function(e) {
+                if(e && deebo.methods.isTabKey(e)){
+                    const cell = document.getElementsByClassName("dragger-cell-focused")[0]
+                    if(cell && cell.nextElementSibling)
+                        setTimeout( function() { cell.nextElementSibling.focus() })
+                }
             },
 
             blurCellDragger: function() {
@@ -1534,7 +1601,7 @@ deebo.methods = function() {
                         }
                         if(els.length > 1){
                             const dir = deebo.methods.scrollDir === "down" ? 1 : -1;
-                            const toScl = dir*(Math.ceil(e.offsetY)/2)
+                            const toScl = dir*(Math.ceil((e.offsetY || 20))/2)
                             document.getElementById("dataTableBody").scrollBy(0, toScl)
                         }
                         const fCellDragger = document.getElementsByClassName("focused-cell-dragger")[0]
@@ -1635,9 +1702,6 @@ deebo.methods = function() {
                         const actEl = document.activeElement
                         if(actEl && actEl.id === "fCellDragger"){
                             el.classList.add("dragger-cell-focused")
-                            window.addEventListener("selectstart", deebo.methods.stopWinSel)
-                            window.addEventListener("mousemove", deebo.methods.handleCellDraggerEdit)
-                            setTimeout( function() { window.addEventListener("mouseup", deebo.methods.handleDraggerMU) })
                             // deebo.methods.currEditCol = deebo.methods.replaceUniSep(deebo.methods.getColFrmClsList(el, "data-cell-"))
                         } else {
                             if(!actEl || (actEl && !/data-cell/g.test(actEl?.className))){
@@ -1975,7 +2039,8 @@ deebo.methods = function() {
                 /*horiz scroll*/
                 /*vert scroll*/
                 if(top === deebo.methods.verticalRest){
-                    deebo.methods.clearValidatedEdit()
+                    if(!deebo.methods.autoScrollOnEdit)
+                        deebo.methods.clearValidatedEdit()
                     return deebo.methods.setRowSelChecksPlacement(); 
                 }
                 window.requestAnimationFrame( function() { deebo.methods.execVertScroll(top) })     
@@ -2023,6 +2088,7 @@ deebo.methods = function() {
                 if(deebo.methods.showCharts)
                     return;
                 setTimeout( function() { 
+                    deebo.methods.autoScrollOnEdit = false
                     deebo.methods.setColsOnVisScreen()
                     deebo.methods.setRowSelChecksPlacement()
                     if(deebo.methods.listenToCellDraggerMouseMove)
@@ -2152,15 +2218,19 @@ deebo.methods = function() {
                                 const col = pos.col
                                 const elcol = col.replace(/ /g, deebo.methods.uniSep)
                                 if(pos.vis){
-                                    const id = parseInt(row.id.replace(/dataTableRow/g, ""))
-                                    const item = dataTableService.methods.mainData[id]
-                                    const eCell = document.querySelector("#" + row.id + " .data-cell-" + elcol)
-                                    if(eCell)//already there, make visible
-                                        deebo.methods.updateCell(eCell, col, elcol, item[col], id)
+                                    if(row.id){
+                                        const id = parseInt(row.id.replace(/dataTableRow/g, ""))
+                                        const item = dataTableService.methods.mainData[id]
+                                        const eCell = document.querySelector("#" + row.id + " .data-cell-" + elcol)
+                                        if(eCell)//already there, make visible
+                                            deebo.methods.updateCell(eCell, col, elcol, item[col], id)
+                                    }
                                 } else {
-                                    const rCell = document.querySelector("#" + row.id + " .data-cell-" + elcol)
-                                    if(rCell)
-                                        rCell.classList.remove("data-visible")
+                                    if(row.id){
+                                        const rCell = document.querySelector("#" + row.id + " .data-cell-" + elcol)
+                                        if(rCell)
+                                            rCell.classList.remove("data-visible")
+                                    }
                                 }
                             }
                         }
@@ -2839,6 +2909,28 @@ deebo.methods = function() {
                     return event.keyCode === 32
                 } else if (event.code !== undefined) {
                     return event.code === "Space"
+                }
+                return false
+            },
+
+            isDownKey: function(event) {
+                if (event && event.key !== undefined) {
+                    return event.key === 'ArrowDown'
+                } else if (event.keyIdentifier !== undefined) {
+                    return event.keyIdentifier === 'ArrowDown'
+                } else if (event.keyCode !== undefined) {
+                    return event.keyCode === 40
+                }
+                return false
+            },
+
+            isUpKey: function(event) {
+                if (event && event.key !== undefined) {
+                    return event.key === 'ArrowUp'
+                } else if (event.keyIdentifier !== undefined) {
+                    return event.keyIdentifier === 'ArrowUp'
+                } else if (event.keyCode !== undefined) {
+                    return event.keyCode === 38
                 }
                 return false
             },
@@ -6448,6 +6540,8 @@ deebo.methods = function() {
                     if(fdrag){
                         fdrag.addEventListener("focus", deebo.methods.focusCellDragger)
                         fdrag.addEventListener("blur", deebo.methods.blurCellDragger)
+                        fdrag.addEventListener("keydown", deebo.methods.handleFDragTab)
+                        fdrag.addEventListener("mousedown", deebo.methods.focusCellDraggerFromMouseDown)
                     }
                     document.querySelector("#exportContain .deebo-dd-contain").addEventListener("click", deebo.methods.toggleExportOpts)
                     window.addEventListener("resize", deebo.methods.cleanUpPieLayovers)
