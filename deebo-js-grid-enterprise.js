@@ -5088,14 +5088,17 @@ deebo.methods = function() {
                 }
             },
 
-            buildPieGraphFromColVals: function(par, counts, type) {
+            buildPieGraphFromColVals: function(par, counts, type, noCover) {
                 let data = []
                 const div = document.createElement("div")
-                const odiv = document.createElement("div")
+                let odiv;
+                if(!noCover) 
+                    odiv = document.createElement("div")
                 const canvas = document.createElement("canvas");
                 div.className = "center"
                 div.classList.add("relly")
-                odiv.className = "pie-layover"
+                if(odiv)
+                    odiv.className = "pie-layover"
                 div.style.paddingTop = "33px"
                 par.appendChild(div)
                 const dbds = div.getBoundingClientRect()
@@ -5104,14 +5107,16 @@ deebo.methods = function() {
                 canvas.width = canWid;
                 canvas.height = canWid;
                 div.appendChild(canvas)
-                div.appendChild(odiv)
-                const cBds = canvas.getBoundingClientRect()
-                const oWid = Math.floor(cwid/3.8)
-                odiv.style.width = oWid + "px"
-                odiv.style.height = oWid + "px"
-                const diff = cBds.width-oWid
-                odiv.style.top = Math.floor((cBds.top-dbds.top) + (diff/2)) + "px";
-                odiv.style.left = Math.floor((cBds.left-dbds.left) + (diff/2)) + "px";
+                if(odiv){
+                    div.appendChild(odiv)
+                    const cBds = canvas.getBoundingClientRect()
+                    const oWid = Math.floor(cwid/3.8)
+                    odiv.style.width = oWid + "px"
+                    odiv.style.height = oWid + "px"
+                    const diff = cBds.width-oWid
+                    odiv.style.top = Math.floor((cBds.top-dbds.top) + (diff/2)) + "px";
+                    odiv.style.left = Math.floor((cBds.left-dbds.left) + (diff/2)) + "px";
+                }
                 const ctx = canvas.getContext("2d");
                 const props = Object.keys(counts)
                 let colors = ["forestgreen", "crimson", "orange", "blue", "turquoise", "brown", "hotpink", "goldenrod", "purple", "olive", "steelblue", "black", 
@@ -5197,7 +5202,7 @@ deebo.methods = function() {
 
                 const maxArr = data.sort( function(a, b) { return a.value < b.value ? -1 : 1 })
                 const max = maxArr[(maxArr.length-1)]
-                if(max && (max.value !== maxArr[0].value || maxArr.length === 1)){
+                if(odiv && max && (max.value !== maxArr[0].value || maxArr.length === 1)){
                     odiv.style.color = max.color;
                     odiv.innerHTML = ("<div><div>" + deebo.methods.sanitizeUi(max.label) + '</div><div class="pad-top-sm">'+((max.value/total)*100).toFixed(1)+ '%</div></div>')
                 }
@@ -5215,7 +5220,8 @@ deebo.methods = function() {
                             let cltxt = par.firstElementChild.textContent.replace(/[ ]?table_chart/g, "");
                             if(!cltxt.endsWith("s"))
                                 cltxt += "s";
-                            odiv.innerHTML = ('<div><div><b class="ins-even-dist-ct">' + dlen + '</b> </div><div class="pad-top-sm">' +cltxt+ '</div></div>')
+                            if(odiv)
+                                odiv.innerHTML = ('<div><div><b class="ins-even-dist-ct">' + dlen + '</b> </div><div class="pad-top-sm">' +cltxt+ '</div></div>')
                         }
                     }catch(e){}
                 }
