@@ -50,6 +50,59 @@ deebo.methods = function() {
             setCellEditScrlActionTO: null,
             badStrings: ["null", "NULL", "Null", "undefined", "UNDEFINED", "Undefined"],
             statOpts: ["avg", "min", "max", "mode", "median", "sum"],
+            themeColor1: "#000035",
+            themeColor2: "#e9e9e9",
+            initJSONProp: "result",
+            cssUrl: "https://d2ffvluimla00s.cloudfront.net/data-grid-enterprise.css",
+            initApiMethod: "GET",
+            initApiEndpoint: "https://d2ffvluimla00s.cloudfront.net/senators.json",
+            localDataSet: [ { name: "Dave", salary: 200000, title: "CEO" }, {name: "Amy", salary: 164000, title: "CIO" }, 
+                {name: "Ted", salary: 60000, title: "QA Engineer" }, {name: "Sarah", salary: 95000, title: "Engineer" }, 
+                {name: "Adam", salary: 164000, title: "CFO" }, {name: "Krishna", salary: 105000, title: "Architect" }],
+
+            //PROGRAMMABILITY
+            setInitMethod: function(method) {
+                if(method && typeof method === "string")
+                    deebo.methods.initApiMethod = method
+            },
+
+            setInitResProp: function(prop) {
+                if(prop && typeof prop === "string")
+                    deebo.methods.initJSONProp = prop
+            },
+
+            setInitApiUrl: function(url) {
+                if(url && typeof url === "string")
+                    deebo.methods.initApiEndpoint = url
+            },
+
+            setDfltGridHgt: function(gridHght) {
+                if(gridHght && typeof gridHght === "number")
+                    deebo.methods.dTblHeight = gridHght
+            },
+
+            setDfltRowHgt: function(rowHght) {
+                if(rowHght && typeof rowHght === "string")
+                    dataTableService.methods.defltRHgt = rowHght
+            },
+
+            setThemeColors: function(color1, color2) {
+                if(color1 && typeof color1 === "string")
+                    deebo.methods.themeColor1 = color1
+                if(color2 && typeof color2 === "string")
+                deebo.methods.themeColor2 = color2
+            },
+
+            setAltRows: function() {
+                deebo.methods.cssUrl = "https://d2ffvluimla00s.cloudfront.net/data-grid-alt.css"
+            },
+
+            setLocalDataSet: function(data) {
+                if(data && typeof data === "object" && typeof data.length === "number"){
+                    deebo.methods.localDataSet = data.filter( function(d) { return true })
+                }
+            },
+            //PROGRAMMABILITY
 
             getAllColsAtRuntime: function(excludeDuid, excludeHidden) {
                 let cols = (typeof dataTableService.methods.mainData[0] === "object" ? Object.keys(dataTableService.methods.mainData[0]) : 
@@ -815,6 +868,361 @@ deebo.methods = function() {
                     deebo.methods.styleEmptyFilDataRow(lrow, tbody, null, (err || "Loading..."))
                     tbody.appendChild(lrow)
                 }
+            },
+
+            createHiddenCols: function() {
+                const hc = document.createElement("div")
+                hc.className = "hidden-cols"
+                return hc
+            },
+
+            createControls: function() {
+                const controls = document.createElement("div")
+                const inp = document.createElement("input")
+                const btnX = document.createElement("button")
+                const btnXg = document.createElement("button")
+                const btnCharts = document.createElement("button")
+                const btnTog = document.createElement("button")
+                const ixg = document.createElement("i")
+                const sxg = document.createElement("span")
+                const iChart = document.createElement("i")
+                const sChart = document.createElement("span")
+                const iTog = document.createElement("i")
+                const sTog = document.createElement("span")
+                const btnR = document.createElement("button")
+                inp.type = "text"
+                inp.id = "topLevelDataFilter"
+                inp.name = "topLevelDataFilter"
+                inp.placeholder = "Filter any column...";
+                inp.autocomplete = "off";
+                btnX.type = "button"
+                btnX.disabled = true
+                btnX.id = "btnXSelRows"
+                btnX.className = "btn-ctrl-sel-rows"
+                btnX.className += " hide";
+                btnX.textContent = "Deselect Rows"
+                btnXg.type = "button"
+                btnXg.className = "hide"
+                btnXg.className += " no-btn"
+                btnXg.className += " btn-clear-grp";
+                ixg.className = "material-icons"
+                ixg.className += " error-message"
+                ixg.className += " v-mid"
+                ixg.className += " heavy"
+                ixg.ariaHidden = "false"
+                ixg.textContent = "close"
+                sxg.className = "md-text"
+                sxg.className += " v-mid"
+                sxg.textContent = " Grouping"
+                //<i class="material-icons error-message heavy v-mid" aria-hidden="false">close</i>&nbsp;<span class="md-text v-mid">Grouping</span>
+                btnCharts.type = "button"
+                btnCharts.id = "btnCharts"
+                btnCharts.className = "no-btn"
+                btnCharts.className += " btn-chart";
+                btnCharts.disabled = true
+                iChart.className = "material-icons";
+                iChart.className += " v-mid"
+                iChart.ariaHidden = "false"
+                iChart.textContent = "bar_chart"
+                sChart.className = "md-text"
+                sChart.className += " v-mid"
+                sChart.textContent = " Insights"
+                //<i class="material-icons v-mid" aria-hidden="false">bar_chart</i>&nbsp;<span class="v-mid">Insights</span>
+                btnR.textContent = "Reset"
+                btnR.id = "btnReset";
+                btnR.className = "btn-reset"
+                btnTog.id = "btnTogSelRows"
+                btnTog.type = "button"
+                btnTog.disabled = true
+                iTog.className = "material-icons"
+                iTog.className += " v-mid"
+                iTog.ariaHidden = "false"
+                iTog.textContent = "check_box_outline_blank"
+                sTog.textContent = " Selected Rows"
+                btnXg.appendChild(ixg)
+                btnXg.appendChild(sxg)
+                btnCharts.appendChild(iChart)
+                btnCharts.appendChild(sChart)
+                btnTog.appendChild(iTog)
+                btnTog.appendChild(sTog)
+                controls.className = "controls"
+                controls.appendChild(inp)
+                controls.appendChild(btnXg)
+                controls.appendChild(btnCharts)
+                controls.appendChild(btnX)
+                controls.appendChild(btnTog)
+                controls.appendChild(btnR)
+                return controls;
+            },
+
+            createChecksCont: function() {
+                const ccont = document.createElement("div")
+                ccont.className = "relly"
+                ccont.id = "dataTableChecks"
+                return ccont
+            },
+
+            createSelFil: function() {
+                const scont = document.createElement("div")
+                scont.className = "relly"
+                scont.id = "selFilContainer"
+                return scont
+            },
+
+            createValEditInit: function() {
+                const vcont = document.createElement("div")
+                vcont.className = "relly"
+                vcont.className += " invisible";
+                vcont.id = "validatedEdit"
+                return vcont
+            },
+
+            createFCellDrag: function() {
+                const fdragr = document.createElement("div")
+                const drg = document.createElement("div")
+                fdragr.className = "relly"
+                fdragr.style.zIndex = "10";
+                drg.tabIndex = 0
+                drg.id = "fCellDragger"
+                drg.className = "hide"
+                fdragr.appendChild(drg)
+                return fdragr
+            },
+
+            createRowNumCont: function() {
+                const rcont = document.createElement("div")
+                const rh = document.createElement("div")
+                const rhn = document.createElement("div")
+                const rov = document.createElement("div")
+                const rb = document.createElement("div")
+                rcont.className = "row-numbers"
+                rh.id = "rowNumHeader"
+                rh.className = "row-num-header"
+                rh.className += " flex-center"
+                rhn.className = "semi-heavy"
+                rhn.textContent = "No."
+                rh.appendChild(rhn)
+                rov.style.overflow = "hidden"
+                rb.id = "rowNumBody"
+                rb.style.overflow = "auto"
+                rov.appendChild(rb)
+                rcont.appendChild(rh)
+                rcont.appendChild(rov)
+                return rcont;
+            },
+
+            createDataTable: function() {
+                const dt = document.createElement("div")
+                const dth = document.createElement("div")
+                const dtb = document.createElement("div")
+                const abv = document.createElement("div")
+                const blw = document.createElement("div")
+                dt.id = "dataTable"
+                dt.className = "data-table"
+                dth.id = "dataTableHeaders"
+                dth.className = "data-table-headers"
+                dtb.id = "dataTableBody"
+                abv.id = "aboveArea"
+                blw.id = "belowArea"
+                dt.appendChild(dth)
+                dtb.appendChild(abv)
+                dtb.appendChild(blw)
+                dt.appendChild(dtb)
+                return dt
+            },
+
+            createGridFooter: function() {
+                const foot = document.createElement("div")
+                const pagi = document.createElement("div")
+                const pagiT = document.createElement("div")
+                const pagiQ = document.createElement("div")
+                const tr = document.createElement("div")
+                const rs = document.createElement("div")
+                const sLbl = document.createElement("label")
+                const sdiv = document.createElement("div")
+                const sInp = document.createElement("input")
+                const sOptC = document.createElement("div")
+                foot.id = "tableFooter"
+                foot.className = "hide"
+                pagi.className = "paginator"
+                pagiT.className = "three-qtr-wid"
+                tr.id = "totalRows"
+                tr.className = "inline"
+                tr.className += " v-mid"
+                tr.className += " semi-heavy"
+                tr.className += " lg-text"
+                rs.className = "inline"
+                rs.className += " v-mid"
+                rs.textContent = " rows";
+                pagiT.appendChild(tr)
+                pagiT.appendChild(rs)
+                pagiQ.className = "qtr-wid"
+                pagiQ.className += " right"
+                sLbl.className = "skip=lbl"
+                sLbl.textContent = "Jump To Row "
+                sLbl.setAttribute("for", "skipTo")
+                sdiv.className = "skip-to-contain"
+                sInp.type = "number"
+                sInp.min = "1"
+                sInp.id = "skipTo"
+                sInp.name = "skipTo"
+                sInp.placeholder = "Jump to..."
+                sOptC.id = "skipToOptions"
+                sOptC.className = "skip-to-options-hide"
+                sdiv.appendChild(sInp)
+                sdiv.appendChild(sOptC)
+                pagiQ.appendChild(sLbl)
+                pagiQ.appendChild(sdiv)
+                pagi.appendChild(pagiT)
+                pagi.appendChild(pagiQ)
+                foot.appendChild(pagi)
+                return foot;
+            },
+
+            createInsightsCont: function() {
+                const ins = document.createElement("div")
+                ins.id = "selectedRowsInsights"
+                ins.className = "hide"
+                return ins
+            },
+
+            createExpOts: function() {
+                let i = 0
+                const xopts = ["Csv", "Json", "Psv", "Tsv"] 
+                const rel = document.createElement("div")
+                const dsel = document.createElement("div")
+                const len = xopts.length
+                const makeXBtn = function(type) {
+                    const optDv = document.createElement("div")
+                    const btn = document.createElement("button")
+                    optDv.className = "deebo-dd-opt"
+                    optDv.className += " deebo-dd-export"
+                    btn.type = "button"
+                    btn.id = "btnExport" + type
+                    btn.className = "btn-export"
+                    btn.className += " no-btn"
+                    btn.textContent = type.toLocaleUpperCase()
+                    optDv.appendChild(btn)
+                    return optDv
+                }
+                rel.className = "relly"
+                dsel.id = "ddSelect"
+                dsel.className = "deebo-dd-select-hide"
+                dsel.className += " deebo-dd-export";
+                for(i; i < len; i++)
+                    dsel.appendChild(makeXBtn(xopts[i]))
+                rel.appendChild(dsel)
+                return rel
+            },
+
+            createGridAux: function() {
+                const cont = document.createElement("div")
+                const canGb = document.createElement("div")
+                const exCont = document.createElement("div")
+                const exLbl = document.createElement("div")
+                const exBtn = document.createElement("button")
+                const exSp = document.createElement("span")
+                const exI = document.createElement("i")
+                cont.className = "right"
+                cont.className += " pad-top-thirty"
+                canGb.id = "canGroupByContain"
+                canGb.className = "inline-b"
+                canGb.className += " deebo-dd-contain-div";
+                exCont.id = "exportContain"
+                exCont.className = "inline-b"
+                exCont.className += " deebo-dd-contain-div"
+                exCont.appendChild(deebo.methods.createExpOts())
+                exLbl.className = "deebo-dd-contain"
+                exLbl.className += " deebo-dd-export"
+                exLbl.className += " flex-center";
+                exLbl.tabIndex = 0
+                exBtn.type = "button"
+                exBtn.disabled = true
+                exBtn.className = "btn-deebo-dd"
+                exBtn.className += " deebo-dd-export"
+                exBtn.className += " no-btn"
+                exSp.textContent = "Export"
+                exI.className = "material-icons"
+                exI.ariaHidden = "false"
+                exI.textContent = "keyboard_arrow_down"
+                exBtn.appendChild(exSp)
+                exBtn.appendChild(exI)
+                exLbl.appendChild(exBtn)
+                exCont.appendChild(exLbl)
+                cont.appendChild(canGb)
+                cont.appendChild(exCont)
+                return cont;
+            },
+
+            initDeeboData: function(licenseKey, local) {
+                const sect = document.getElementById("deeboDataGridSection")
+                if(sect){
+                    const lnk = document.createElement("link")
+                    lnk.rel = "stylesheet";
+                    lnk.onload = function() {
+                        const frag = document.createDocumentFragment()
+                        frag.appendChild(deebo.methods.createHiddenCols())
+                        frag.appendChild(deebo.methods.createControls())
+                        frag.appendChild(deebo.methods.createChecksCont())
+                        frag.appendChild(deebo.methods.createSelFil())
+                        frag.appendChild(deebo.methods.createValEditInit())
+                        frag.appendChild(deebo.methods.createFCellDrag())
+                        frag.appendChild(deebo.methods.createRowNumCont())
+                        frag.appendChild(deebo.methods.createDataTable())
+                        frag.appendChild(deebo.methods.createGridFooter())
+                        frag.appendChild(deebo.methods.createInsightsCont())
+                        frag.appendChild(deebo.methods.createGridAux())
+                        sect.appendChild(frag)
+                        setTimeout( function() {
+                            deebo.methods.initListeners()
+                            if(local)
+                                return license.methods.validateLicense(licenseKey, deebo.methods.initializeLocalData)//2nd arg is your function handler
+                            license.methods.validateLicense(licenseKey, deebo.methods.xhrInitialize)
+                        })
+                    }
+                    lnk.onerror = function() { console.log("The deebodata data grid css failed to load.") }
+                    lnk.href = deebo.methods.cssUrl;
+                    document.head.appendChild(lnk)
+                } else {
+                    console.log("Please add a div whose id = deeboDataGridSection to your html to initiate the deebodata data grid.")
+                }
+            },
+
+            xhrInitialize: function() {
+                var xhr = new XMLHttpRequest()
+                xhr.onreadystatechange = function() {
+                    if(xhr.readyState === 4){
+                        try{
+                            let xhrdata;
+                            if(deebo.methods.initJSONProp){
+                                xhrdata = JSON.parse(xhr.responseText)[deebo.methods.initJSONProp]
+                            } else {
+                                xhrdata = JSON.parse(xhr.responseText)
+                            }
+                            if(xhr.status === 200){
+                                xhrdata = deebo.methods.convertNeededCols(xhrdata)
+                                dataTableService.methods.mainData = xhrdata.filter( function(d) { return true })
+                                dataTableService.methods.currFilData = xhrdata.filter( function(d) { return true })
+                                dataTableService.methods.mainDataLen = dataTableService.methods.mainData.length
+                                deebo.methods.buildInitUiDataTable(xhrdata, deebo.methods.themeColor1, deebo.methods.themeColor2)
+                            }
+                        }catch(e){ deebo.methods.setLoading(e.message) }
+                    }
+                }
+                xhr.open(deebo.methods.initApiMethod, deebo.methods.initApiEndpoint, true)
+                xhr.send()
+                deebo.methods.removeEmptyLoadRows()
+                deebo.methods.setLoading()
+            },
+
+            initializeLocalData: function() { 
+                let data = deebo.methods.localDataSet.filter( function(d) { return true });
+                deebo.methods.removeEmptyLoadRows()
+                data = deebo.methods.convertNeededCols(data)
+                dataTableService.methods.mainData = data.filter( function(d) { return true })
+                dataTableService.methods.currFilData = data.filter( function(d) { return true })
+                dataTableService.methods.mainDataLen = dataTableService.methods.mainData.length
+                deebo.methods.buildInitUiDataTable(data, deebo.methods.themeColor1, deebo.methods.themeColor2)//any 2 css colors
             },
 
             buildInitUiDataTable: function(data, color1, color2, blockEditing, hideRowNumbers) {//will be array of objects
@@ -2617,9 +3025,18 @@ deebo.methods = function() {
                     }
                     if(okEnt && allowFreeze)
                         document.getElementById("btnXSelRows").previousElementSibling.addEventListener("click", deebo.methods.displaySelectedInsights)
+                    if(!okEnt){
+                        div.style.backgroundImage = deebo.methods.makeElRWaterMrk()
+                        div.style.backgroundPosition = "right"
+                        div.style.backgroundRepeat = "no-repeat"
+                    }
                     div.addEventListener("dblclick", tblDragEvents.methods.handleColResDblClick)
                     head.appendChild(div)
                 }catch(e){ }
+            },
+
+            makeElRWaterMrk: function() {
+                return "url(\"https://d2ffvluimla00s.cloudfront.net/deebo-water.webp\")";
             },
 
             getDataColumns: function(data) {
@@ -3932,6 +4349,13 @@ deebo.methods = function() {
                 row.style.height = deebo.methods.dTblHeight + "px"
                 row.style.width = document.getElementById("dataTableHeaders")?.scrollWidth + "px";
                 setTimeout( function() { tbody.scrollLeft = tbodyX }, 100)
+            },
+
+            removeEmptyLoadRows: function() {
+                const els = document.getElementsByClassName("data-table-row-no-data")
+                const len = els.length
+                for(var i = (len-1); i >= 0; i--)
+                    els[i].parentElement.removeChild(els[i])
             },
 
             findObjIndxInData: function(item, which) {
@@ -6179,8 +6603,8 @@ deebo.methods = function() {
                                 const ctx = canvas.getContext("2d")
                                 if(ctx){
                                     const whiteTxt = ["white", "#FFFFFF", "#ffffff", "rgb(255, 255, 255)", "rgb(255,255,255)"];
-                                    if(dataTableService.methods.themeColor1 && whiteTxt.indexOf(dataTableService.methods.themeColor1) < 0)
-                                        lgColor = dataTableService.methods.themeColor1;
+                                    if(deebo.methods.themeColor1 && whiteTxt.indexOf(deebo.methods.themeColor1) < 0)
+                                        lgColor = deebo.methods.themeColor1;
                                     let useCol = lgColor
                                     if(lgColor.startsWith("#"))
                                         useCol = deebo.methods.hexToRgb(lgColor)
@@ -8192,5 +8616,3 @@ groupBy.methods = function() {
         return home
     }()
 }()
-
-document.addEventListener("DOMContentLoaded", deebo.methods.initListeners)

@@ -1,111 +1,11 @@
 <head>
     <title>Javascript Data Grid</title>
-    <link rel="stylesheet" href="./data-grid-enterprise.css">
 </head>
 <body>
-    <div class="hidden-cols"></div>
-    <div class="controls">
-        <input type="text" id="topLevelDataFilter" name="topLevelDataFilter" placeholder="Filter any column..." autocomplete="off" />
-        <button type="button" class="hide no-btn btn-clear-grp">
-            <i class="material-icons error-message heavy v-mid" aria-hidden="false">close</i>&nbsp;<span class="md-text v-mid">Grouping</span>
-        </button>
-        <button type="button" id="btnCharts" class="no-btn btn-chart" disabled>
-            <i class="material-icons v-mid" aria-hidden="false">bar_chart</i>&nbsp;<span class="v-mid">Insights</span>
-        </button>
-        <button type="button" id="btnXSelRows" disabled class="btn-ctrl-sel-rows hide">Deselect Rows</button>
-        <button type="button" id="btnTogSelRows" disabled class="btn-ctrl-sel-rows hide">
-            <i class="material-icons" aria-hidden="false">check_box_outline_blank</i>&nbsp;<span>Selected Rows</span>
-        </button>
-        <button id="btnReset" class="btn-reset" >Reset</button>
-    </div>
-    <div id="dataTableChecks" class="relly"></div>
-    <div id="selFilContainer" class="relly"></div>
-    <div id="validatedEdit" class="relly invisible"></div>
-    <div class="relly" style="z-index: 10;"><div tabindex="0" id="fCellDragger" class="hide"></div></div>
-    <div class="row-numbers" >
-        <div id="rowNumHeader" class="row-num-header flex-center"><div class="semi-heavy">No.</div></div>
-        <div style="overflow: hidden"><div id="rowNumBody" style="overflow: auto"></div></div>
-    </div><div id="dataTable" class="data-table">
-    <div id="dataTableHeaders" class="data-table-headers"></div>
-    <div id="dataTableBody"><div id="aboveArea"></div><div id="belowArea"></div></div>
-    </div>
-    <div id="tableFooter" class="hide">
-        <div class="paginator">
-            <div class="three-qtr-wid">
-                <div id="totalRows" class="inline v-mid semi-heavy lg-text"></div>&nbsp;<div class="inline v-mid">rows</div>
-            </div><div class="qtr-wid right">
-                <label class="skip-lbl" for="skipTo">Jump To Row</label>&nbsp;&nbsp;<div class="skip-to-contain"><input type="number" min="1"
-                name="skipTo" id="skipTo" placeholder="Jump to..." />
-                <div id="skipToOptions" class="skip-to-options-hide"></div></div>
-            </div>
-        </div>
-    </div>
-    <div id="selectedRowsInsights" class="hide"></div>
-    <div class="right pad-top-thirty">
-        <div id="canGroupByContain" class="inline-b deebo-dd-contain-div"></div><div 
-        id="exportContain" class="inline-b deebo-dd-contain-div">
-            <div class="relly">
-                <div id="ddSelect" class="deebo-dd-select-hide deebo-dd-export">
-                    <div class="deebo-dd-opt deebo-dd-export">
-                        <button type="button" id="btnExportCsv" class="btn-export no-btn">CSV</button>
-                    </div>
-                    <div class="deebo-dd-opt deebo-dd-export">
-                        <button type="button" id="btnExportJson" class="btn-export no-btn">JSON</button>
-                    </div>
-                    <div class="deebo-dd-opt deebo-dd-export">
-                        <button type="button" id="btnExportPsv" class="btn-export no-btn">PSV</button>
-                    </div>
-                    <div class="deebo-dd-opt deebo-dd-export">
-                        <button type="button" id="btnExportTsv" class="btn-export no-btn">TSV</button>
-                    </div>
-                </div>
-            </div>
-            <div class="deebo-dd-contain deebo-dd-export flex-center" tabindex="0">
-                <button class="btn-deebo-dd deebo-dd-export no-btn" disabled>
-                    <span>Export</span>
-                    <i class="material-icons" aria-hidden="false">keyboard_arrow_down</i>
-                </button>
-            </div>
-        </div>
-    </div>
+    <div id="deeboDataGridSection"></div>
     <script src="./deebo-js-grid-enterprise.js"></script>
     <script>
-        function initialize() {
-            var xhr = new XMLHttpRequest()
-            xhr.onreadystatechange = function() {
-                if(xhr.readyState === 4){
-                    try{
-                        let xhrdata = JSON.parse(xhr.responseText)["result"]
-                        if(xhr.status === 200){
-                            xhrdata = deebo.methods.convertNeededCols(xhrdata)
-                            dataTableService.methods.mainData = xhrdata.filter( function(d) { return true })
-                            dataTableService.methods.currFilData = xhrdata.filter( function(d) { return true })
-                            dataTableService.methods.mainDataLen = dataTableService.methods.mainData.length
-                            deebo.methods.buildInitUiDataTable(xhrdata, null, null)
-                        }
-                    }catch(e){ deebo.methods.setLoading(e.message) }
-                }
-            }
-            xhr.open("GET", "https://d2ffvluimla00s.cloudfront.net/senators.json", true)
-            xhr.send()
-            deebo.methods.setLoading()
-        }
-        license.methods.validateLicense('Dv1_1-1778034955259JS-GTRIAL10427', initialize)//2nd arg is your function handler
+        deebo.methods.setThemeColors("white", "red")
+        deebo.methods.initDeeboData("", true)
     </script>
-    <!-- <script>
-       function initialize() { -->
-          <!-- where data is an array of objects e.g. [ { name: "dave" }, {name: "amy" } ] -->
-    <!--       var data = [ { name: "Dave", salary: 200000, title: "CEO" }, {name: "Amy", salary: 164000, title: "CIO" }, 
-          {name: "Ted", salary: 60000, title: "QA Engineer" }, {name: "Sarah", salary: 95000, title: "Engineer" }, 
-          {name: "Adam", salary: 164000, title: "CFO" }, {name: "Krishna", salary: 105000, title: "Architect" }];
-          data = deebo.methods.convertNeededCols(data)
-          dataTableService.methods.mainData = data.filter( function(d) { return true })
-          dataTableService.methods.currFilData = data.filter( function(d) { return true })
-          dataTableService.methods.mainDataLen = dataTableService.methods.mainData.length
-          deebo.methods.buildInitUiDataTable(data, "#000035", "#e9e9e9")//any 2 css colors
-          //deebo.methods.buildInitUiDataTable(data, "black", "skyblue", true)//true in 4th arg blocks edits
-          //deebo.methods.buildInitUiDataTable(data, "black", "skyblue", true, true)//true in 5th arg hides row nums
-       }
-       license.methods.validateLicense('Dv1_1-1778034955259JS-GTRIAL10427', initialize)//2nd arg is your function handler
-    </script> -->
 </body>
