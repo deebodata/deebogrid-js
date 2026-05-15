@@ -85,6 +85,21 @@ deebo.methods = function() {
                 if(data && typeof data === "object" && typeof data.length === "number")
                     deebo.methods.localDataSet = data.filter( function(d) { return true })
             },
+
+            setShowRowNums: function(show) {
+                if(show === false || show === true)
+                    deebo.methods.rowNumbers = show
+            },
+
+            setEditable: function(canEdit) {
+                if(canEdit === false || canEdit === true)
+                    deebo.methods.editable = canEdit
+            },
+
+            setPrimaryKeyInit: function(key) {
+                if(key && typeof key === "string")
+                    dataTableService.methods.primaryKey = key
+            },
             //PROGRAMMABILITY
 
             getAllColsAtRuntime: function(excludeDuid, excludeHidden) {
@@ -934,12 +949,14 @@ deebo.methods = function() {
             },
 
             initializeLocalData: function() { 
+                const blkEdit = !deebo.methods.editable
+                const rowNs = !deebo.methods.rowNumbers
                 let data = deebo.methods.localDataSet.filter( function(d) { return true });
                 data = deebo.methods.convertNeededCols(data)
                 dataTableService.methods.mainData = data.filter( function(d) { return true })
                 dataTableService.methods.currFilData = data.filter( function(d) { return true })
                 dataTableService.methods.mainDataLen = dataTableService.methods.mainData.length
-                deebo.methods.buildInitUiDataTable(data, deebo.methods.themeColor1, deebo.methods.themeColor2)//any 2 css colors
+                deebo.methods.buildInitUiDataTable(data, deebo.methods.themeColor1, deebo.methods.themeColor2, blkEdit, rowNs)//any 2 css colors
             },
 
             buildInitUiDataTable: function(data, color1, color2, blockEditing, hideRowNumbers) {//will be array of objects
@@ -1098,6 +1115,14 @@ deebo.methods = function() {
             getPrimaryKey: function(cols) {
                 let i = 0
                 const len = cols.length
+                if(dataTableService.methods.primaryKey){//means they set 1 in init but it needs to be checked
+                    const colData = dataTableService.methods.mainData.map( function(d) { return d[dataTableService.methods.primaryKey] } )
+                    if(colData.length && !colData.some( function(c) { return !c })){
+                        const map = new Set(colData)
+                        if(map.size === dataTableService.methods.mainDataLen)
+                            return;//they set a good one
+                    }
+                }
                 for(i; i < len; i++){
                     const col = cols[i]
                     if(deebo.methods.idCol(col)){
