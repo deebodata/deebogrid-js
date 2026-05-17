@@ -208,7 +208,7 @@ deebo.methods = function() {
                 const tbody = document.getElementById("dataTableBody")
                 tbody.innerHTML = ""
                 deebo.methods.resetTblBody(tbody)
-                deebo.methods.horizRest = 0
+                // deebo.methods.horizRest = 0
                 tbody.scrollTop = 0
                 deebo.methods.verticalRest = 0
                 document.getElementById("dataTableChecks").innerHTML = ""
@@ -3880,7 +3880,7 @@ deebo.methods = function() {
                 deebo.methods.verticalRest = 0
                 let didXScrl = false;
                 const thead = document.getElementById("dataTableHeaders")
-                if(reset && thead)
+                if(reset && thead && !deebo.methods.currGroupValues.length)
                     thead.style.marginLeft = "0px"
                 deebo.methods.clearValidatedEdit(null, true)
                 document.getElementById("dataTableChecks").innerHTML = ""
@@ -3900,7 +3900,7 @@ deebo.methods = function() {
                     btnCharts.disabled = true
                     const tRows = document.getElementById("totalRows")
                     if(tRows){
-                        tRows.textContent = 0
+                        tRows.textContent = "0";
                         deebo.methods.handleFilSDataStr(tRows)
                     }
                     return tbody.appendChild(row)
@@ -3908,6 +3908,11 @@ deebo.methods = function() {
                 if(deebo.methods.currGroupValues.length){//don't add to rows here
                     if(field)
                         deebo.methods.columnOfInterest = field
+                    const tRows = document.getElementById("totalRows")
+                    if(tRows){
+                        tRows.textContent = len.toLocaleString(undefined, { maximumFractionDigits: 0 })
+                        deebo.methods.handleFilSDataStr(tRows)
+                    }
                     return groupBy.methods.gridEventWhileGrouped();
                 }
                 if(deebo.methods.rowNumbers){
@@ -4033,7 +4038,7 @@ deebo.methods = function() {
                 btnCharts.disabled = false
                 const tRows = document.getElementById("totalRows")
                 if(tRows){
-                    tRows.textContent = dataTableService.methods.currFilData.length.toLocaleString(undefined, { maximumFractionDigits: 0 })
+                    tRows.textContent = len.toLocaleString(undefined, { maximumFractionDigits: 0 })
                     deebo.methods.handleFilSDataStr(tRows)
                 }
                 dataTableService.methods.mapperWorkerId += 1//a reset but needs to incr so prev don't affect mapping 
@@ -5810,6 +5815,7 @@ deebo.methods = function() {
                             let minL = 0
                             const ifrag = document.createDocumentFragment()
                             const maxLft = Math.floor((pbds.right - mrks[0].getBoundingClientRect().left) - Math.ceil((lastdtdv.width/2)+1))
+                            const whiteTxt = ["white", "#FFFFFF", "#ffffff", "rgb(255, 255, 255)", "rgb(255,255,255)"];
                             for(i; i < nlen; i++){
                                 const usennum = numArr[i]?.toLocaleString(undefined, {maximumFractionDigits: maxDigs})
                                 const plft = findNLft(usennum)
@@ -5822,7 +5828,7 @@ deebo.methods = function() {
                                     else
                                         ndiv.style.left = Math.min(dmn, maxLft) + "px";
                                     ndiv.setAttribute("data-number", usennum)
-                                    if(deebo.methods.themeColor1)
+                                    if(deebo.methods.themeColor1 && whiteTxt.indexOf(deebo.methods.themeColor1) < 0)
                                         ndiv.style.background = deebo.methods.themeColor1
                                     if(i === 0 || i === (nlen-1)){
                                         ndiv.setAttribute("data-parent", outParId)
@@ -7906,7 +7912,6 @@ groupBy.methods = function() {
                     const elVal = realVal.replace(/ /g, deebo.methods.uniSep)
                     const defNum = parseInt(dataTableService.methods.defltRHgt.replace(/[ ]?px/g, ""))
                     const init = Math.max(groupBy.methods.openGbGrids[realVal].panelHeight/defNum);
-                    let didXScrl = false
                     const tbody = document.getElementById('panelDataGrid' + elVal)
                     let hidden = []
                     for(const prop in dataTableService.methods.dataFilSrtTracker){
@@ -7961,13 +7966,6 @@ groupBy.methods = function() {
                             cell.className += " data-visible";
                         }
                         row.appendChild(cell)
-                        if(deebo.methods.columnOfInterest && deebo.methods.horizRest > 0 && deebo.methods.columnOfInterest === prop && !didXScrl){
-                            setTimeout( function() {
-                                if(tbody)
-                                    tbody.scrollLeft = deebo.methods.horizRest
-                            }, 100)
-                            didXScrl = true
-                        }
                     }
                     const count = groupBy.methods.openGbGrids[realVal].count
                     const limit = Math.min(init, count)
