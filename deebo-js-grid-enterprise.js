@@ -1367,6 +1367,8 @@ deebo.methods = function() {
                                     cell.setAttribute("contenteditable", "true")
                             } else {
                                 cell.innerHTML = useTxt.value
+                                if(/[A-Za-z0-9][ ]?\<a/g.test(useTxt.value) || /a\>[ ]?[A-Za-z0-9]/g.test(useTxt.value))
+                                    cell.style.display = "inline-block"
                             }
                             if(colStyle)
                                 cell.classList.add(colStyle + useTxt.value?.replace(/ /g, deebo.methods.uniSep))
@@ -2711,6 +2713,8 @@ deebo.methods = function() {
                         cell.setAttribute("contenteditable", "true")
                 } else {
                     cell.innerHTML = useTxt.value
+                    if(/[A-Za-z0-9][ ]?\<a/g.test(useTxt.value) || /a\>[ ]?[A-Za-z0-9]/g.test(useTxt.value))
+                        cell.style.display = "inline-block"
                 }
                 if(colStyle)
                     cell.classList.add(colStyle + useTxt.value?.replace(/ /g, deebo.methods.uniSep))
@@ -4086,6 +4090,8 @@ deebo.methods = function() {
                                 cell.setAttribute("contenteditable", "true")
                         } else {
                             cell.innerHTML = useTxt.value
+                            if(/[A-Za-z0-9][ ]?\<a/g.test(useTxt.value) || /a\>[ ]?[A-Za-z0-9]/g.test(useTxt.value))
+                                cell.style.display = "inline-block"
                         }
                         if(colStyle)
                             cell.classList.add(colStyle + useTxt.value?.replace(/ /g, deebo.methods.uniSep))
@@ -8112,6 +8118,8 @@ groupBy.methods = function() {
                                 cell.textContent = useTxt.value
                             } else {
                                 cell.innerHTML = useTxt.value
+                                if(/[A-Za-z0-9][ ]?\<a/g.test(useTxt.value) || /a\>[ ]?[A-Za-z0-9]/g.test(useTxt.value))
+                                    cell.style.display = "inline-block"
                             }
                             if(colStyle)
                                 cell.classList.add(colStyle + useTxt.value?.replace(/ /g, deebo.methods.uniSep))
@@ -8421,6 +8429,8 @@ groupBy.methods = function() {
                     cell.textContent = useTxt.value
                 } else {
                     cell.innerHTML = useTxt.value
+                    if(/[A-Za-z0-9][ ]?\<a/g.test(useTxt.value) || /a\>[ ]?[A-Za-z0-9]/g.test(useTxt.value))
+                        cell.style.display = "inline-block"
                 }
                 if(colStyle)
                     cell.classList.add(colStyle + useTxt.value?.replace(/ /g, deebo.methods.uniSep))
