@@ -85,11 +85,61 @@ deebo.methods = function() {
                     dataTableService.methods.defltRHgt = rowHght
             },
 
+            setForcedGroups: function(columns) {
+                if(columns && typeof columns === "object" && columns.length)
+                    dataTableService.methods.forceGroups = columns.filter( function(c) { return c })
+            },
+
             setThemeColors: function(color1, color2) {
                 if(color1 && typeof color1 === "string")
                     deebo.methods.themeColor1 = color1
                 if(color2 && typeof color2 === "string")
-                deebo.methods.themeColor2 = color2
+                    deebo.methods.themeColor2 = color2
+            },
+
+            setColumnSymbols: function(colSymbols) {//{ column: "width", symbol: "px" }
+                if(colSymbols && typeof colSymbols === "object" && colSymbols.length){
+                    let i = 0;
+                    const len = colSymbols.length
+                    for(i; i < len; i++){
+                        const sym = colSymbols[i]
+                        if(Object.keys(sym).length === 2 && Object.hasOwn(sym, "column") && Object.hasOwn(sym, "symbol") && sym.symbol.length <= 2)
+                            dataTableService.methods.columnSymbols.push(sym)
+                    }
+                }
+            },
+
+            setColumnStyles: function(colStyles) {
+                if(colStyles && typeof colStyles === "object" && colStyles.length){
+                    let i = 0;
+                    const len = colStyles.length
+                    for(i; i < len; i++){
+                        const sty = colStyles[i]
+                        if(Object.keys(sty).length === 2 && Object.hasOwn(sty, "column") && Object.hasOwn(sty, "css") && typeof sty.css === "object" && sty.css.length)
+                            dataTableService.methods.columnStyles.push(sty)
+                    }
+                }
+            },
+
+            setColumnValueColors: function(colValColors) {
+                if(colValColors && typeof colValColors === "object" && colValColors.length){
+                    let i = 0;
+                    const len = colValColors.length
+                    for(i; i < len; i++){
+                        const sty = colValColors[i]
+                        if(Object.keys(sty).length === 2 && Object.hasOwn(sty, "column") && Object.hasOwn(sty, "valueColors") && typeof sty.valueColors === "object" && sty.valueColors.length)
+                            dataTableService.methods.columnValueColors.push(sty)
+                    }
+                }
+            },
+
+            setPieUncovered: function(command) {
+                if(command === true || command === false){
+                    dataTableService.methods.removePieCovers = command
+                } else {
+                    if(command && typeof command === "object" && command.length)
+                        dataTableService.methods.removePieCovers = command.filter( function(c) { return c })
+                }
             },
 
             setAltRows: function() {
@@ -115,6 +165,11 @@ deebo.methods = function() {
             setPrimaryKeyInit: function(key) {
                 if(key && typeof key === "string")
                     dataTableService.methods.primaryKey = key
+            },
+
+            setWorkerUrl: function(url) {
+                if(url && typeof url === "string")
+                    deebo.methods.workerUrl = url
             },
             //PROGRAMMABILITY
 
@@ -1465,10 +1520,11 @@ deebo.methods = function() {
                         continue//means values are all unique so likely not dropdown material
                     let arrFrmSet = []
                     dSet.forEach( function(v) { arrFrmSet.push(v) })                         
+                    const force = dataTableService.methods.forceGroups.indexOf(col) > -1;                     
                     const doSels = dLen < 100 ? 2 : ((dLen >= 100 && dLen < 500) ? 10 : 15)
                     const cantDoDD = arrFrmSet.some( function(a) { return a && a.length > 40 })
                     if(!cantDoDD && ((boolData || bitData) || (arrFrmSet.filter( function(a) { return !!a }).length > 0 && colData.every( function(d) { return !d || typeof d === "string" })))){
-                        if(arrFrmSet.length > 1 && arrFrmSet.length <= doSels && deebo.methods.goodLs())
+                        if(((force && arrFrmSet.length <= 30) || (arrFrmSet.length > 1 && arrFrmSet.length <= doSels)) && deebo.methods.goodLs())
                             deebo.methods.swapColFilterToSelect(col, arrFrmSet.filter( function(v) { return !!v && deebo.methods.badStrings.indexOf(v) < 0 }))
                     }
                 }
@@ -1869,7 +1925,7 @@ deebo.methods = function() {
 
             execValClear: function(e, clearDrag) {
                 deebo.methods.blurContEd()
-                if(e && e.target && e.target.getAttribute("type") === "button"){//keep the cell
+                if(e && e.target && typeof e.target.getAttribute === "function" && e.target.getAttribute("type") === "button"){//keep the cell
                     try{document.getElementById("fCellDragger").focus()}catch(e){}
                 } else {
                     deebo.methods.currEditIndex = -1
@@ -2695,7 +2751,7 @@ deebo.methods = function() {
                         const bds = head.getBoundingClientRect()
                         if(bds.left > dataTableService.methods.tblRight)
                             continue
-                        const cell = document.querySelector("#"+row0?.id+" .data-cell-" + elcol)
+                        const cell = document.querySelector("#"+(row0?.id || "notHere")+" .data-cell-" + elcol)
                         if(cell){
                             const isVis = cell.classList.contains("data-visible") || /data-visible/g.test(cell.className);
                             if(!isVis && (dataTableService.methods.visibleCols.indexOf(col) > -1 || (bds.left >= (dataTableService.methods.tblLeft-lftPlus) && bds.right < (dataTableService.methods.tblRight+lftPlus))))//visible
@@ -2719,13 +2775,13 @@ deebo.methods = function() {
                                     if(row.id){
                                         const id = parseInt(row.id.replace(/dataTableRow/g, ""))
                                         const item = dataTableService.methods.mainData[id]
-                                        const eCell = document.querySelector("#" + row.id + " .data-cell-" + elcol)
+                                        const eCell = document.querySelector("#" + (row.id || "notHere") + " .data-cell-" + elcol)
                                         if(eCell)//already there, make visible
                                             deebo.methods.updateCell(eCell, col, elcol, item[col], id)
                                     }
                                 } else {
                                     if(row.id){
-                                        const rCell = document.querySelector("#" + row.id + " .data-cell-" + elcol)
+                                        const rCell = document.querySelector("#" + (row.id || "notHere") + " .data-cell-" + elcol)
                                         if(rCell)
                                             rCell.classList.remove("data-visible")
                                     }
@@ -2759,7 +2815,7 @@ deebo.methods = function() {
                                 if(cell && cell.classList.contains("data-cell")){
                                     const elify = deebo.methods.getColFrmClsList(cell, "data-cell-")
                                     const prop = deebo.methods.replaceUniSep(elify)
-                                    const el = document.querySelector("#" + row.id + " .data-cell-" + elify)
+                                    const el = document.querySelector("#" + (row.id || "notHere") + " .data-cell-" + elify)
                                     if((el && el.getBoundingClientRect().right < (dataTableService.methods.tblLeft-lftPlus)) && (el && (!el.innerHTML || !el.getAttribute("style"))))
                                         deebo.methods.updateCell(cell, prop, elify, item[prop], id)//make em all visible
                                 }
@@ -4147,7 +4203,7 @@ deebo.methods = function() {
                 }
             },
 
-            workerUrl: /*"http://127.0.0.1:8080/worker.js"*/"http://localhost:8080/worker.js",
+            workerUrl: "http://localhost:8080/worker.js",
 
             clearGroupBySels: function() {
                 let i = 0
@@ -4797,7 +4853,7 @@ deebo.methods = function() {
                 for(b; b < blen; b++){//{ useId: useId, strCol: strCol, numCol: numCol, inner: inner }
                     const bg = bgs[b]
                     const bel = document.getElementById(bg.useId)
-                    const exts = document.querySelector("#" + bg.useId + " .inner-bg-contain")
+                    const exts = document.querySelector("#" + (bg.useId || "notHere") + " .inner-bg-contain")
                     if(bel && !exts && !bg.showing && deebo.methods.topIsInView(bg.useId)){
                         bg["showing"] = true
                         const bgData = valData.filter( function(d) { return d[bg.numCol] === 0 || !!d[bg.numCol] }).
@@ -4811,8 +4867,8 @@ deebo.methods = function() {
                 for(i; i < len; i++){//{ useId: parId, col: col, ncol: useNCol }, can have "data" property
                     const lg = lgs[i]
                     const lel = document.getElementById(lg.useId)
-                    const grphCont = document.querySelector("#" + lg.useId + " .inner-bg-contain")//already added
-                    const isLoading = document.querySelector("#" + lg.useId + " .inner-bg-contain .lg-loading")
+                    const grphCont = document.querySelector("#" + (lg.useId || "notHere") + " .inner-bg-contain")//already added
+                    const isLoading = document.querySelector("#" + (lg.useId || "notHere") + " .inner-bg-contain .lg-loading")
                     if(lel && isLoading && !lg.showing && deebo.methods.topIsInView(lg.useId)){
                         let uDates = []
                         let mappedData = []
@@ -4829,8 +4885,13 @@ deebo.methods = function() {
                                 else
                                     uDates.push(pdt)
                             });
+                            if(lg.strCol){
+                                mappedData = valData.filter( function(d) {return d[lg.ncol] === 0 || !!d[lg.ncol]}).
+                                map( function(d) {return ({strColumn: d[lg.strCol], numColumn: d[lg.ncol], dtColumn: d[lg.col]})})
+                            } else {
                             mappedData = valData.filter( function(d) {return d[lg.ncol] === 0 || !!d[lg.ncol]}).
                             map( function(d) {return ({numColumn: d[lg.ncol], dtColumn: d[lg.col]})})
+                            }
                         }
                         if (typeof Worker !== 'undefined'/* && deebo.methods.workerUrl !== "http://127.0.0.1:8080/worker.js"*/) {
                             try{
@@ -4839,7 +4900,7 @@ deebo.methods = function() {
                                 worker.onmessage = function({ data }) {//{ lineGraph: data.lineGraph, data: [] }
                                     if(grphCont.id === data.lineGraph && document.getElementsByClassName("insight-field-row").length){
                                         setTimeout( function() { 
-                                            deebo.methods.drawLineGraph(null, grphCont, "dtColumn", lg.col, "numColumn", lg.ncol, data.data, data.data.length);
+                                            deebo.methods.drawLineGraph(null, grphCont, "dtColumn", lg.col, "numColumn", lg.ncol, data.data, data.data.length, null, null, lg.selDdVal, lg.strCol);
                                             deebo.methods.waitingInsightGraphs["lineGraphs"] = deebo.methods.waitingInsightGraphs["lineGraphs"].filter( function(lgp) { return lgp.useId !== lg.useId })
                                         })
                                     }
@@ -4849,14 +4910,14 @@ deebo.methods = function() {
                             }catch(e){
                                 const useData = deebo.methods.setUseableLgData((lg.data || mappedData), (lg.uDates || uDates), "avg")
                                 setTimeout( function() { 
-                                    deebo.methods.drawLineGraph(null, grphCont, "dtColumn", lg.col, "numColumn", lg.ncol, useData, useData.length) 
+                                    deebo.methods.drawLineGraph(null, grphCont, "dtColumn", lg.col, "numColumn", lg.ncol, useData, useData.length, null, null, lg.selDdVal, lg.strCol) 
                                     deebo.methods.waitingInsightGraphs["lineGraphs"] = deebo.methods.waitingInsightGraphs["lineGraphs"].filter( function(lgp) { return lgp.useId !== lg.useId })
                                 })
                             }
                         } else {
                             const useData = deebo.methods.setUseableLgData((lg.data || mappedData), (lg.uDates || uDates), "avg")
                             setTimeout( function() { 
-                                deebo.methods.drawLineGraph(null, grphCont, "dtColumn", lg.col, "numColumn", lg.ncol, useData, useData.length) 
+                                deebo.methods.drawLineGraph(null, grphCont, "dtColumn", lg.col, "numColumn", lg.ncol, useData, useData.length, null, null, lg.selDdVal, lg.strCol) 
                                 deebo.methods.waitingInsightGraphs["lineGraphs"] = deebo.methods.waitingInsightGraphs["lineGraphs"].filter( function(lgp) { return lgp.useId !== lg.useId })
                             })
                         }
@@ -5175,7 +5236,7 @@ deebo.methods = function() {
                             }
                             if(((boolData || bitData) || (arrFrmSet.filter( function(a) { return !!a }).length > 0 && colData.every( function(d) { return !d || typeof d === "string" })))){
                                 if(arrFrmSet.length <= 18)
-                                    pieCharts.push({ inner: inner, counts: counts, type: ((boolData || bitData) ? "boolean" : "string") })
+                                    pieCharts.push({ inner: inner, column: col, counts: counts, type: ((boolData || bitData) ? "boolean" : "string") })
                             }
                         }
                     }catch(e){}
@@ -5208,7 +5269,7 @@ deebo.methods = function() {
                     let p = 0
                     const pLen = pieCharts.length
                     for(p; p < pLen; p++)
-                        deebo.methods.buildPieGraphFromColVals(pieCharts[p].inner, pieCharts[p].counts, pieCharts[p].type)
+                        deebo.methods.buildPieGraphFromColVals(pieCharts[p].inner, pieCharts[p].column, pieCharts[p].counts, pieCharts[p].type)
                     setTimeout(deebo.methods.cleanUpPieLayovers)
                 }, 50)
                 if(dtCols.length && deebo.methods.numCols.length && typeof document.querySelectorAll === "function")
@@ -5367,7 +5428,7 @@ deebo.methods = function() {
                     const yWid = barY.getBoundingClientRect().width
                     const offY = Math.ceil(yWid+5);
                     const useIncr = Math.min(deebo.methods.maxBarWid, (Math.floor((icont.getBoundingClientRect().width-offY)/xlen)))
-                    deebo.methods.buildBGBars(statData, max, useIncr, barY, barCt, sym);
+                    deebo.methods.buildBGBars(statData, strCol, max, useIncr, barY, barCt, sym);
                     setTimeout( function() { 
                         barXC.style.marginLeft = offY + "px";
                         barCt.style.marginLeft = offY + "px";
@@ -5382,7 +5443,7 @@ deebo.methods = function() {
                 })
             },
 
-            buildBGBars: function(data, max, useIncr, yAx, barC, sym) {
+            buildBGBars: function(data, strCol, max, useIncr, yAx, barC, sym) {
                 let i = 0
                 const len = data.length
                 let background;
@@ -5394,6 +5455,9 @@ deebo.methods = function() {
                     try{
                         const item = data[i]
                         const bhgt = item["y"]/max;
+                        const ownCol = dataTableService.methods.getColValColor(strCol, item["x"])
+                        if(ownCol)
+                            background = ownCol
                         const strVal = item["y"].toLocaleString(undefined, {maximumFractionDigits: 2})
                         let symb4 = ""
                         let symaf = ""
@@ -5614,12 +5678,22 @@ deebo.methods = function() {
                 }
             },
 
-            buildPieGraphFromColVals: function(par, counts, type, noCover) {
+            checkWhiteGraphColor: function(color, sub) {
+                const whiteTxt = ["white", "#FFFFFF", "#ffffff", "rgb(255, 255, 255)", "rgb(255,255,255)"];
+                if(color && whiteTxt.indexOf(color) < 0)
+                    return color
+                return sub;
+            },
+
+            buildPieGraphFromColVals: function(par, column, counts, type) {
                 let data = []
                 const div = document.createElement("div")
                 let odiv;
-                if(!noCover) 
-                    odiv = document.createElement("div")
+                try{
+                    if(dataTableService.methods.removePieCovers === false || 
+                    (typeof dataTableService.methods.removePieCovers === "object" && dataTableService.methods.removePieCovers.indexOf(column) < 0))
+                        odiv = document.createElement("div")
+                }catch(e){}
                 const canvas = document.createElement("canvas");
                 div.className = "center"
                 div.classList.add("relly")
@@ -5675,7 +5749,7 @@ deebo.methods = function() {
                 
                 const isBool = type === "boolean" ? true : false;
                 if(isBool || props.filter( function(p) { return p != deebo.methods.deboTotal }).length < 3)
-                    colors = [(deebo.methods.themeColor1 || "#00a8f3"), (deebo.methods.themeColor2 || "black")]
+                    colors = [deebo.methods.checkWhiteGraphColor(deebo.methods.themeColor1, "#00a8f3"), deebo.methods.checkWhiteGraphColor(deebo.methods.themeColor2, "#8f8f8f")]
                 const numNa = counts[na]
                 const rmNaPer = 65
                 const perNa = numNa ? ((numNa/dTotal)*100) : 0
@@ -5694,7 +5768,7 @@ deebo.methods = function() {
                         rmNotes.push(rmNt)
                         continue
                     }
-                    const color = colors[props.indexOf(prop)]
+                    const color = dataTableService.methods.getColValColor(column, prop) || colors[props.indexOf(prop)]
                     data.push({ label: prop, value: counts[prop], color: color })
                     const cont = document.createElement("div")
                     const lbl = document.createElement("div")
@@ -6046,10 +6120,11 @@ deebo.methods = function() {
                 const fromOkLingGs = col.split(dataTableService.methods.bgSep)//if len
                 const strODtCol = fromOkLingGs[0]
                 let valOpts = []
+                let sel;
                 if(dataTableService.methods.dataFilSrtTracker[strODtCol].selDDVals && dataTableService.methods.dataFilSrtTracker[strODtCol].selDDVals.length){
                     const vals = dataTableService.methods.dataFilSrtTracker[strODtCol].selDDVals?.filter( function(g) {return g.checked && g.value !== "(Select All)"})
                     valOpts = vals.map( function(v) {return v.value})
-                    const sel = document.createElement("select")
+                    sel = document.createElement("select")
                     sel.id = parId + "__valSel";
                     sel.style.maxWidth = "80%"
                     sel.disabled = true
@@ -6111,23 +6186,27 @@ deebo.methods = function() {
                             worker = new Worker(deebo.methods.workerUrl);
                             worker.onmessage = function({ data }) {//{ lineGraph: data.lineGraph, data: [] }
                                 if(grphCont.id === data.lineGraph && document.getElementsByClassName("insight-field-row").length)
-                                    setTimeout( function() { deebo.methods.drawLineGraph(null, grphCont, "dtColumn", col, "numColumn", useNCol, data.data, data.data.length, selOrFil, timeD) })
+                                    setTimeout( function() { deebo.methods.drawLineGraph(null, grphCont, "dtColumn", col, "numColumn", useNCol, data.data, data.data.length, selOrFil, timeD, (dVal || sel?.value), strODtCol) })
                             };
                             if(worker)
                                 worker.postMessage({ lineGraph: grphCont.id, data: useData, uDates: (uDates || unqDates), stat: (stat || "avg") });
                         }catch(e){
                             const fUseData = deebo.methods.setUseableLgData(useData, (uDates || unqDates), (stat || "avg"))
-                            setTimeout( function() { deebo.methods.drawLineGraph(null, grphCont, "dtColumn", col, "numColumn", useNCol, fUseData, fUseData.length, selOrFil, timeD) })
+                            setTimeout( function() { deebo.methods.drawLineGraph(null, grphCont, "dtColumn", col, "numColumn", useNCol, fUseData, fUseData.length, selOrFil, timeD, (dVal || sel?.value), strODtCol) })
                         }
                     } else {
                         const fUseData = deebo.methods.setUseableLgData(useData, (uDates || unqDates), (stat || "avg"))
-                        setTimeout( function() { deebo.methods.drawLineGraph(null, grphCont, "dtColumn", col, "numColumn", useNCol, fUseData, fUseData.length, selOrFil, timeD) })
+                        setTimeout( function() { deebo.methods.drawLineGraph(null, grphCont, "dtColumn", col, "numColumn", useNCol, fUseData, fUseData.length, selOrFil, timeD, (dVal || sel?.value), strODtCol) })
                     }
                 } else {
                     const lgs = deebo.methods.waitingInsightGraphs["lineGraphs"]
                     let lgneeds;
                     if(uDates || fromOkLingGs.length === 3){
-                        lgneeds = { useId: parId, col: col, ncol: useNCol, data: useData, uDates: uDates }
+                        if(sel){
+                            lgneeds = { useId: parId, col: col, ncol: useNCol, data: useData, uDates: uDates, strCol: strODtCol, selDdVal: sel.value }
+                        } else {
+                            lgneeds = { useId: parId, col: col, ncol: useNCol, data: useData, uDates: uDates }
+                        }
                     } else {
                         lgneeds = { useId: parId, col: col, ncol: useNCol }
                     }
@@ -6345,6 +6424,7 @@ deebo.methods = function() {
             },
 
             sizeUpBgDims: function(lgContain, yAxis) {
+                try{
                 const yWid = yAxis.getBoundingClientRect().width
                 const offY = Math.ceil(yWid+5)
                 const statOCont = document.querySelector("#" + lgContain.parentElement.parentElement.id + " .stat-opt-contain")
@@ -6353,6 +6433,7 @@ deebo.methods = function() {
                     statOCont.style.marginLeft = offY + "px";
                 if(auxCont)
                     auxCont.style.marginLeft = offY + "px";
+                } catch(e){}
             },
 
             enableLgBtns: function(par) {
@@ -6370,7 +6451,7 @@ deebo.methods = function() {
                 }
             },
 
-            drawLineGraph: function(event, par, dcol, dtcolnm, ncol, ncolnm, data, dlen, selOrFil, timeD) {
+            drawLineGraph: function(event, par, dcol, dtcolnm, ncol, ncolnm, data, dlen, selOrFil, timeD, selDdVal, strCol) {
                 if(event){//only txt in btn, its cool
                     const cols = event.target?.id?.replace(/^btn/, "").split("___")
                     if(cols && cols.length === 2){
@@ -6753,6 +6834,17 @@ deebo.methods = function() {
                                                     }
                                                 }
                                                 skipped = 0
+                                                const ownCol = dataTableService.methods.getColValColor(strCol, selDdVal)
+                                                if(ownCol){
+                                                    lgColor = ownCol
+                                                    useCol = lgColor
+                                                    if(lgColor.startsWith("#"))
+                                                        useCol = deebo.methods.hexToRgb(lgColor)
+                                                    else
+                                                        useCol = deebo.methods.getRgbParts(lgColor)
+                                                    if(useCol && typeof useCol === "object")
+                                                        lgUndColor = "rgba("+useCol.r+", "+useCol.g+", "+useCol.b+", 0.2)";
+                                                }
                                                 deebo.methods.drawCanvasLineGraph(ctx, dx, dy, ptBef.left, (lgbds.height-ptBef.bottom), lgColor, lgUndColor, totalHgt)
                                             }
                                             pfrag.appendChild(pt)
@@ -7129,29 +7221,25 @@ dataTableService.methods = function() {
                 number: ["Equals", "Not Equal", "Empty", "Not Empty", "Less Than", "Less Than or Equal", "Greater Than", "Greater Than or Equal"],
                 date: ["Equals", "Not on", "Empty", "Not Empty", "Before", "After"],
             },
-            columnSymbols: [
-                { column: "width", symbol: "px" },
-                { column: "height", symbol: "px" },
-                { column: "Unit Price", symbol: "$" },
-                { column: "Unit Cost", symbol: "$" },
-                { column: "Total Revenue", symbol: "$" },
-                { column: "Total Cost", symbol: "$" },
-            ],
 
-            columnStyles: [
-                { 
-                    column: "party", 
-                    css: [
-                        { value: "Republican", color: "red", font_size: "18px" },
-                        { value: "Democrat", color: "blue", font_size: "18px" },
-                        { value: "Independent", color: "green", font_size: "18px" },
-                    ] 
-                },
-            ],
+            columnSymbols: [],//{ column: "width", symbol: "px" },
+
+            columnStyles: [],
+
+            columnValueColors: [],
+
+            forceGroups: [],
+
+            removePieCovers: false,
 
             getColumnStyle: function(col) {
                 const foundCol = dataTableService.methods.columnStyles.find( function(c) {return c.column === col})?.column
                 return foundCol ? ("data-cell-" + foundCol + "-") : "";
+            },
+
+            getColValColor: function(column, value) {
+                return dataTableService.methods.columnValueColors.filter( function(c) {return c.column === column})[0]?.
+                valueColors.find( function(vc) {return vc.value === value})?.color;
             },
 
             getNewTrackerObj: function(colName) {
@@ -8365,7 +8453,7 @@ groupBy.methods = function() {
                         const bds = head.getBoundingClientRect()
                         if(bds.left > dataTableService.methods.tblRight)
                             continue
-                        const cell = document.querySelector("#"+row0?.id+" .data-cell-" + elcol)
+                        const cell = document.querySelector("#"+(row0?.id || "notHere")+" .data-cell-" + elcol)
                         if(cell){
                             const isVis = cell.classList.contains("data-visible") || /data-visible/g.test(cell.className);
                             if(!isVis && (dataTableService.methods.visibleCols.indexOf(col) > -1 || (bds.left >= dataTableService.methods.tblLeft && bds.right < dataTableService.methods.tblRight)))//visible
@@ -8388,11 +8476,11 @@ groupBy.methods = function() {
                                 if(pos.vis){
                                     const id = parseInt(row.id.replace(/dataTableRow/g, ""))
                                     const item = dataTableService.methods.mainData[id]
-                                    const eCell = document.querySelector("#" + row.id + " .data-cell-" + elcol)
+                                    const eCell = document.querySelector("#" + (row.id || "notHere") + " .data-cell-" + elcol)
                                     if(eCell)//already there, make visible
                                         groupBy.methods.updateCell(eCell, col, elcol, item[col], id)
                                 } else {
-                                    const rCell = document.querySelector("#" + row.id + " .data-cell-" + elcol)
+                                    const rCell = document.querySelector("#" + (row.id || "notHere") + " .data-cell-" + elcol)
                                     if(rCell)
                                         rCell.classList.remove("data-visible")
                                 }
@@ -8424,7 +8512,7 @@ groupBy.methods = function() {
                                 if(cell && cell.classList.contains("data-cell")){
                                     const elify = deebo.methods.getColFrmClsList(cell, "data-cell-")
                                     const prop = deebo.methods.replaceUniSep(elify)
-                                    const el = document.querySelector("#" + row.id + " .data-cell-" + elify)
+                                    const el = document.querySelector("#" + (row.id || "notHere") + " .data-cell-" + elify)
                                     if((el && el.getBoundingClientRect().right < dataTableService.methods.tblLeft) && (el && (!el.innerHTML || !el.getAttribute("style"))))
                                         groupBy.methods.updateCell(cell, prop, elify, item[prop], id)//make em all visible
                                 }

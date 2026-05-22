@@ -5,8 +5,37 @@
     <div id="deeboDataGridSection"></div>
     <script src="./deebo-js-grid-enterprise.js"></script>
     <script>
-        deebo.methods.setInitApiUrl("https://d2ffvluimla00s.cloudfront.net/stim_imgs_comm.json")
+        deebo.methods.setInitApiUrl("https://d2ffvluimla00s.cloudfront.net/senators.json")
         deebo.methods.setThemeColors("white", "red")
+        deebo.methods.setColumnStyles(
+        [
+            { 
+                column: "party", 
+                css: [
+                    { value: "Republican", color: "red", font_size: "18px" },
+                    { value: "Democrat", color: "blue", font_size: "18px" },
+                    { value: "Independent", color: "green", font_size: "18px" },
+                ] 
+            },
+        ])
+        deebo.methods.setColumnValueColors([
+                {
+                    column: "party",
+                    valueColors: [
+                        { value: "Republican", color: "rgb(255, 0, 0)" },
+                        { value: "Democrat", color: "rgb(0, 0, 255)" },
+                        { value: "Independent", color: "rgb(0, 255, 0)" }
+                    ]
+                },
+                {
+                    column: "gender",
+                    valueColors: [
+                        { value: "male", color: "rgb(0, 0, 255)" },
+                        { value: "female", color: "#FFC0CB" },
+                    ]
+                }
+        ])
+        deebo.methods.setPieUncovered(["party"])
         deebo.methods.initDeeboData("")
     </script>
 </body>
