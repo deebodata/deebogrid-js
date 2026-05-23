@@ -51,8 +51,8 @@ deebo.methods = function() {
             statOpts: ["avg", "min", "max", "mode", "median", "sum"],
             themeColor1: "#000035",
             themeColor2: "#e9e9e9",
+            altRowColor: "",
             initJSONProp: "result",
-            cssUrl: "https://d2ffvluimla00s.cloudfront.net/data-grid-enterprise.css",
             initApiMethod: "GET",
             initApiEndpoint: "https://d2ffvluimla00s.cloudfront.net/senators.json",
             localDataSet: [ { name: "Dave", salary: 200000, title: "CEO" }, {name: "Amy", salary: 164000, title: "CIO" }, 
@@ -142,8 +142,9 @@ deebo.methods = function() {
                 }
             },
 
-            setAltRows: function() {
-                deebo.methods.cssUrl = "https://d2ffvluimla00s.cloudfront.net/data-grid-alt.css"
+            setAltRows: function(color) {
+                if(color && typeof color === "string")
+                    deebo.methods.altRowColor = color;
             },
 
             setLocalDataSet: function(data) {
@@ -1250,7 +1251,7 @@ deebo.methods = function() {
                         })
                     }
                     lnk.onerror = function() { console.log("The deebodata data grid css failed to load.") }
-                    lnk.href = deebo.methods.cssUrl;
+                    lnk.href = "https://d2ffvluimla00s.cloudfront.net/data-grid-enterprise.css";
                     document.head.appendChild(lnk)
                 } else {
                     console.log("Please add a div whose id = deeboDataGridSection to your html to initiate the deebodata data grid.")
@@ -2354,7 +2355,7 @@ deebo.methods = function() {
 
             handleTheme: function(co1, co2) {
                 try{
-                    let rule1; let rule1a; let rule2; let rule3; let rule4; let rule5; let rule6;
+                    let rule1; let rule1a; let rule2; let rule3; let rule4; let rule5; let rule6; let rule7;
                     if(co1){
                         rule1 = ".col-header span, .col-header sup, .col-header button .material-icons, " + 
                         ".row-group-panel button span, .row-group-panel button i, .data-table-footer div{color: "+co1+"}";
@@ -2376,7 +2377,9 @@ deebo.methods = function() {
                         rule5 = ".data-cell{ border-bottom: 1px solid "+co2+"; border-right: 1px solid "+co2+"}"
                     }
                     let el;
-                    if(rule1 || rule1a || rule2 || rule3 || rule4 || rule5 || rule6){
+                    if(deebo.methods.altRowColor)
+                        rule7 = ".data-table-row:not(.data-row-selected):nth-of-type(even){background:"+deebo.methods.altRowColor+"}"
+                    if(rule1 || rule1a || rule2 || rule3 || rule4 || rule5 || rule6 || rule7){
                         el = document.createElement("style")
                         document.head.appendChild(el)
                         if(rule1)
@@ -2393,6 +2396,8 @@ deebo.methods = function() {
                             el.sheet.insertRule(rule5)
                         if(rule6)
                             el.sheet.insertRule(rule6)
+                        if(rule7)
+                            el.sheet.insertRule(rule7)
                     }
                     deebo.methods.handleColumnCss(el)
                 }catch(e){}
