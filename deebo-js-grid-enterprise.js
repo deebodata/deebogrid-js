@@ -1429,6 +1429,7 @@ deebo.methods = function() {
                     tbody.addEventListener("scroll", deebo.methods.handleScroll);
                     tbody.addEventListener("scrollend", deebo.methods.handleScrollEnd);
                     window.addEventListener("resize", dataTableService.methods.setTableBounds)
+                    window.addEventListener("scroll", dataTableService.methods.setTableBounds)
                     window.addEventListener("mouseup", deebo.methods.handleScrlBarDrag)
                     window.addEventListener("click", deebo.methods.testEditDDs)
                     window.addEventListener("click", deebo.methods.handleSkipToWinClick)
@@ -3961,7 +3962,11 @@ deebo.methods = function() {
                         dataTableService.methods.isFiltering = false
                         const buildUpLen = deebo.methods.filterBuildUp.length
                         if(buildUpLen){
-                            deebo.methods.filterOnKeyUp(deebo.methods.filterBuildUp[(buildUpLen-1)])
+                            const actEl = document.activeElement
+                            if(actEl)
+                                deebo.methods.filterOnKeyUp({ target: { id: actEl.id, value: actEl.value } })
+                            else
+                                deebo.methods.filterOnKeyUp(deebo.methods.filterBuildUp[(buildUpLen-1)])
                             deebo.methods.filterBuildUp = []
                             if(!topFilt && (dataTableService.methods.dataFilSrtTracker[field].filter || 
                                 (dataTableService.methods.dataFilSrtTracker[field].comparator && dataTableService.methods.dataFilSrtTracker[field].comparator != "Equals")
