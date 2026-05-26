@@ -21,7 +21,7 @@ deebo.methods = function() {
             deboTotal: "deebo_total",
             dTblHeight: 500,
             desRowHeight: "78",
-            mouseEventBreak: 960,
+            mouseEventBreak: 768,
             uniSep: "Z_",
             verticalRest: 0,
             horizRest: 0,
@@ -52,6 +52,7 @@ deebo.methods = function() {
             themeColor1: "#000035",
             themeColor2: "#e9e9e9",
             altRowColor: "",
+            numDistLim: 5000,
             initJSONProp: "result",
             initApiMethod: "GET",
             initApiEndpoint: "https://d2ffvluimla00s.cloudfront.net/senators.json",
@@ -172,6 +173,11 @@ deebo.methods = function() {
                 if(url && typeof url === "string")
                     deebo.methods.workerUrl = url
             },
+
+            setNumDistLimit: function(limit) {
+                if(limit && typeof limit === "number")
+                    deebo.methods.numDistLim = limit
+            },
             //PROGRAMMABILITY
 
             getAllColsAtRuntime: function(excludeDuid, excludeHidden) {
@@ -274,7 +280,7 @@ deebo.methods = function() {
                 deebo.methods.clearSelectedRows()
                 dataTableService.methods.displayOnlySelRows = false
                 dataTableService.methods.currGroup = group
-                deebo.methods.currGroupValues = dataTableService.methods.dataFilSrtTracker[group]?.["selDDVals"]?.filter( function(g) { return g.value !== "(Select All)"})
+                deebo.methods.currGroupValues = dataTableService.methods.dataFilSrtTracker[group]?.["selDDVals"]?.filter( function(g) { return g.value !== "(Select All)"}) || []
                 setTimeout( function() { document.getElementById("dataTableBody").scrollTop = 0 })
                 if(deebo.methods.rowNumbers){
                     document.getElementsByClassName("row-numbers")[0].classList.add("hide")
@@ -1522,8 +1528,7 @@ deebo.methods = function() {
                     const dSet =new Set(colData)
                     if(dSet.size >= colData.filter( function(d) { return !!d }).length)
                         continue//means values are all unique so likely not dropdown material
-                    let arrFrmSet = []
-                    dSet.forEach( function(v) { arrFrmSet.push(v) })                         
+                    let arrFrmSet = Array.from(dSet)                       
                     const force = dataTableService.methods.forceGroups.indexOf(col) > -1;                     
                     const doSels = dLen < 100 ? 2 : ((dLen >= 100 && dLen < 500) ? 10 : 15)
                     const cantDoDD = arrFrmSet.some( function(a) { return a && a.length > 40 })
@@ -1636,16 +1641,12 @@ deebo.methods = function() {
 
             setGrouping: function(e) {
                 let group = (e.target.getAttribute("for") || e.target.id)?.replace(/groupby/g, "")
-                deebo.methods.processGrouping(group)
-                if(!group){
-                    let i = 0
-                    const len = deebo.methods.canGroupBy.length
-                    for(i; i < len; i++){
-                        const useid = "groupby" + deebo.methods.canGroupBy[i].replace(/ /g, deebo.methods.uniSep);
-                        const el = document.getElementById(useid)
-                        if(el)
-                            el.checked = false
-                    }
+                if(group){
+                    const realGrp = deebo.methods.replaceUniSep(group)
+                    deebo.methods.clearGroupBySels(realGrp)
+                    deebo.methods.processGrouping(realGrp)
+                } else {
+                    deebo.methods.clearGroupBySels()
                 }
             },
 
@@ -3929,6 +3930,11 @@ deebo.methods = function() {
                 const topFilt = (event && event.target && event.target.id === "topLevelDataFilter") ? "topLevelDataFilter" : null;
                 const elCol = event?.target?.id.replace(/filter/g, "")
                 const field = deebo.methods.replaceUniSep(elCol)
+                if(!dataTableService.methods.dataFilSrtTracker[field]){
+                    dataTableService.methods.isFiltering = false
+                    return;
+                }
+                let tout = deebo.methods.isMultiFiltering ? 0 : 500;
                 const btnx = document.getElementById("xfil" + elCol)
                 if((field || topFilt) && !dataTableService.methods.isFiltering){
                     let manual;
@@ -3978,7 +3984,7 @@ deebo.methods = function() {
                                     btnx.className = "hide"
                             }
                         } 
-                    }, 500)
+                    }, tout)
                     if(!topFilt && (dataTableService.methods.dataFilSrtTracker[field].filter || 
                         (dataTableService.methods.dataFilSrtTracker[field].comparator && dataTableService.methods.dataFilSrtTracker[field].comparator != "Equals")
                     )){
@@ -4194,7 +4200,7 @@ deebo.methods = function() {
                         deebo.methods.belowHgt = total*defNum
                         blw.style.height = deebo.methods.belowHgt + "px"
                         if(!reset){
-                            if (typeof Worker !== 'undefined' && deebo.methods.workerUrl !== "http://127.0.0.1:8080/worker.js") {
+                            if (typeof Worker !== 'undefined') {
                                 try{
                                     // Create a new
                                     let worker
@@ -4219,13 +4225,16 @@ deebo.methods = function() {
                 }
             },
 
-            workerUrl: "http://localhost:8080/worker.js",
+            workerUrl: "https://d2ffvluimla00s.cloudfront.net/worker.js",
 
-            clearGroupBySels: function() {
+            clearGroupBySels: function(leaveAlone) {
                 let i = 0
                 const len = deebo.methods.canGroupBy.length
                 for(i; i < len; i++){
-                    const useid = "groupby" + deebo.methods.canGroupBy[i].replace(/ /g, deebo.methods.uniSep);
+                    const cgb = deebo.methods.canGroupBy[i]
+                    if(cgb === leaveAlone)
+                        continue
+                    const useid = "groupby" + cgb.replace(/ /g, deebo.methods.uniSep);
                     const el = document.getElementById(useid)
                     if(el)
                         el.checked = false
@@ -4817,6 +4826,7 @@ deebo.methods = function() {
                 dtb.style.removeProperty("overflow")
                 dtb.scrollBy(1, 1)
                 deebo.methods.numCols = []
+                deebo.methods.currentUniqueDates = {}
                 deebo.methods.waitingInsightGraphs = {};
                 try{ window.removeEventListener("scroll", deebo.methods.keepSelInsightsOnRows) }catch(e){}
             },
@@ -4861,8 +4871,9 @@ deebo.methods = function() {
 
             monitorInsightScrl: function() {
                 let b = 0; let i = 0
-                const bgs = deebo.methods.waitingInsightGraphs["barGraphs"]
-                const lgs = deebo.methods.waitingInsightGraphs["lineGraphs"]
+                const bgs = deebo.methods.waitingInsightGraphs?.["barGraphs"] || [];
+                const lgs = deebo.methods.waitingInsightGraphs?.["lineGraphs"] || [];
+                if(bgs.some(function(b) { return deebo.methods.topIsInView(b.useId) }) || lgs.some(function(l) { return deebo.methods.topIsInView(l.useId) })){
                 const blen = bgs?.length
                 const len = lgs?.length
                 const valData = deebo.methods.getCurrentInsightData()
@@ -4884,23 +4895,14 @@ deebo.methods = function() {
                     const lg = lgs[i]
                     const lel = document.getElementById(lg.useId)
                     const grphCont = document.querySelector("#" + (lg.useId || "notHere") + " .inner-bg-contain")//already added
-                    const isLoading = document.querySelector("#" + (lg.useId || "notHere") + " .inner-bg-contain .lg-loading")
-                    if(lel && isLoading && !lg.showing && deebo.methods.topIsInView(lg.useId)){
+                    // const isLoading = document.querySelector("#" + (lg.useId || "notHere") + " .inner-bg-contain .lg-loading")
+                    if(lel/* && isLoading*/ && !lg.showing && deebo.methods.topIsInView(lg.useId)){
                         let uDates = []
                         let mappedData = []
                         lg["showing"] = true
                         if(lg.data && lg.uDates){
                             //mappedData and uDates already set
                         } else {
-                            const dSet = new Set(valData.sort( function(a, b) {return a[lg.col] > b[lg.col] ? 1 : -1} ).
-                            map( function(d) {return JSON.stringify(d[lg.col])} ))//unique dates
-                            dSet.forEach( function(v) { 
-                                const pdt = JSON.parse(v)
-                                if(typeof pdt === "string")
-                                    uDates.push(deebo.methods.coerceDate(pdt)) 
-                                else
-                                    uDates.push(pdt)
-                            });
                             if(lg.strCol){
                                 mappedData = valData.filter( function(d) {return d[lg.ncol] === 0 || !!d[lg.ncol]}).
                                 map( function(d) {return ({strColumn: d[lg.strCol], numColumn: d[lg.ncol], dtColumn: d[lg.col]})})
@@ -4909,39 +4911,68 @@ deebo.methods = function() {
                             map( function(d) {return ({numColumn: d[lg.ncol], dtColumn: d[lg.col]})})
                             }
                         }
-                        if (typeof Worker !== 'undefined'/* && deebo.methods.workerUrl !== "http://127.0.0.1:8080/worker.js"*/) {
+                        if (typeof Worker !== 'undefined') {
                             try{
                                 let worker
                                 worker = new Worker(deebo.methods.workerUrl);
                                 worker.onmessage = function({ data }) {//{ lineGraph: data.lineGraph, data: [] }
                                     if(grphCont.id === data.lineGraph && document.getElementsByClassName("insight-field-row").length){
                                         setTimeout( function() { 
-                                            deebo.methods.drawLineGraph(null, grphCont, "dtColumn", lg.col, "numColumn", lg.ncol, data.data, data.data.length, null, null, lg.selDdVal, lg.strCol);
+                                            deebo.methods.drawLineGraph(null, grphCont, "dtColumn", lg.col, "numColumn", lg.ncol, data.data, data.data.length, null, null, lg.selDdVal, lg.strCol, lg.warn);
                                             deebo.methods.waitingInsightGraphs["lineGraphs"] = deebo.methods.waitingInsightGraphs["lineGraphs"].filter( function(lgp) { return lgp.useId !== lg.useId })
                                         })
                                     }
                                 };
                                 if(worker)
-                                    worker.postMessage({ lineGraph: grphCont.id, data: (lg.data || mappedData), uDates: (lg.uDates || uDates), stat: "avg" });
+                                    worker.postMessage({ lineGraph: grphCont.id, data: (lg.data || mappedData), uDates: (lg.uDates || deebo.methods.currentUniqueDates[lg.col]), stat: "avg" });
                             }catch(e){
-                                const useData = deebo.methods.setUseableLgData((lg.data || mappedData), (lg.uDates || uDates), "avg")
+                                const useData = deebo.methods.setUseableLgData((lg.data || mappedData), (lg.uDates || deebo.methods.currentUniqueDates[lg.col]), "avg")
                                 setTimeout( function() { 
-                                    deebo.methods.drawLineGraph(null, grphCont, "dtColumn", lg.col, "numColumn", lg.ncol, useData, useData.length, null, null, lg.selDdVal, lg.strCol) 
+                                    deebo.methods.drawLineGraph(null, grphCont, "dtColumn", lg.col, "numColumn", lg.ncol, useData, useData.length, null, null, lg.selDdVal, lg.strCol, lg.warn) 
                                     deebo.methods.waitingInsightGraphs["lineGraphs"] = deebo.methods.waitingInsightGraphs["lineGraphs"].filter( function(lgp) { return lgp.useId !== lg.useId })
                                 })
                             }
                         } else {
-                            const useData = deebo.methods.setUseableLgData((lg.data || mappedData), (lg.uDates || uDates), "avg")
+                            const useData = deebo.methods.setUseableLgData((lg.data || mappedData), (lg.uDates || deebo.methods.currentUniqueDates[lg.col]), "avg")
                             setTimeout( function() { 
-                                deebo.methods.drawLineGraph(null, grphCont, "dtColumn", lg.col, "numColumn", lg.ncol, useData, useData.length, null, null, lg.selDdVal, lg.strCol) 
+                                deebo.methods.drawLineGraph(null, grphCont, "dtColumn", lg.col, "numColumn", lg.ncol, useData, useData.length, null, null, lg.selDdVal, lg.strCol, lg.warn) 
                                 deebo.methods.waitingInsightGraphs["lineGraphs"] = deebo.methods.waitingInsightGraphs["lineGraphs"].filter( function(lgp) { return lgp.useId !== lg.useId })
                             })
                         }
                     }
                 }
+                }
             },
 
             numCols: [],
+            currentUniqueDates: {},//for line graphs per chart opening
+
+            formatUDates: function(arrFromDset) {
+                let u = 0
+                let uDates = []
+                let udlen = arrFromDset.length
+                if(udlen > 50){//trim it down
+                    arrFromDset = arrFromDset.filter( function(a, ind) { return ind === 0 || ind === (udlen-1) || ind%10 === 0 })
+                    udlen = arrFromDset.length
+                    if(udlen > 35){
+                        arrFromDset = arrFromDset.filter( function(a, ind) { return ind === 0 || ind === (udlen-1) || ind%5 === 0 })
+                        udlen = arrFromDset.length
+                        if(udlen > 25){
+                            arrFromDset = arrFromDset.filter( function(a, ind) { return ind === 0 || ind === (udlen-1) || ind%4 === 0 })
+                            udlen = arrFromDset.length
+                        }
+                    }
+                }
+                for(u; u < udlen; u++){
+                    const v = arrFromDset[u]
+                    const pdt = JSON.parse(v)
+                    if(typeof pdt === "string")
+                        uDates.push(deebo.methods.coerceDate(pdt)) 
+                    else
+                        uDates.push(pdt)
+                }
+                return uDates;
+            },
 
             getDataInsights: function(data, cols, parentId, selOrFil) {
                 let i = 0; let r =0; let o = 0;
@@ -4997,8 +5028,11 @@ deebo.methods = function() {
                         bitData = colData.every( function(d) { return !d || d === 1 || d === 0 })
                     if(allNumData && !yearCol && !bitData)//num data
                         deebo.methods.numCols.push(col);
-                    if(dateData || yearCol)
+                    if(dateData || yearCol){
                         dtCols.push(col)
+                        const dtSet = new Set(colData.sort( function(a, b) {return a === b ? 0 : (a > b ? 1 : -1)} ).map( function(d) {return JSON.stringify(d)} ))
+                        deebo.methods.currentUniqueDates[col] = deebo.methods.formatUDates(Array.from(dtSet))
+                    }
                 }
                 const nclen = deebo.methods.numCols.length
                 if(nclen){//if any num cols, see if you can do a bar graph
@@ -5099,20 +5133,10 @@ deebo.methods = function() {
                                     }
                                 }
                             } else {//line graph
-                                let uDates = []
                                 name.textContent = "Avg " + deebo.methods.titleCase(numCol) + " by " + deebo.methods.titleCase(dtCol);
-                                const dSet = new Set(data.sort( function(a, b) {return a[dtCol] > b[dtCol] ? 1 : -1} ).
-                                map( function(d) {return JSON.stringify(d[dtCol])} ))//unique dates
-                                dSet.forEach( function(v) { 
-                                    const pdt = JSON.parse(v)
-                                    if(typeof pdt === "string")
-                                        uDates.push(deebo.methods.coerceDate(pdt)) 
-                                    else
-                                        uDates.push(pdt)
-                                });
                                 const mappedData = data.filter( function(d) {return d[numCol] === 0 || !!d[numCol]}).
                                 map( function(d) {return ({strColumn: (d[strCol] || "N/A"), numColumn: d[numCol], dtColumn: d[dtCol]})})
-                                setTimeout( function() { deebo.methods.buildLg(useId, mappedData, col, numCol, selOrFil, col.replace(/ /g, deebo.methods.uniSep), uDates) })
+                                setTimeout( function() { deebo.methods.buildLg(useId, mappedData, col, numCol, selOrFil, col.replace(/ /g, deebo.methods.uniSep), deebo.methods.currentUniqueDates[dtCol]) })
                             }
                             continue
                         }
@@ -5215,7 +5239,7 @@ deebo.methods = function() {
                                     maxdiv.lastElementChild.classList.add(symCls);
                                 }
                             }
-                            if(noLen && noLen < 5000){
+                            if(noLen && noLen <= deebo.methods.numDistLim){
                                 try{
                                     const vdhtitle = document.createElement("div")
                                     vdhtitle.textContent = "Building " + deebo.methods.sanitizeUi(deebo.methods.titleCase(col)) + " value distribution..."
@@ -5237,8 +5261,7 @@ deebo.methods = function() {
                             }
                         } else {
                             const dSet =new Set(colData)
-                            let arrFrmSet = []
-                            dSet.forEach( function(v) { arrFrmSet.push(v) })
+                            let arrFrmSet = Array.from(dSet)
                             if(dtCols.indexOf(col) < 0){
                                 const udiv = document.createElement("div")
                                 const ndiv = document.createElement("div")
@@ -5641,19 +5664,9 @@ deebo.methods = function() {
                         } else {
                             const elCol =col.replace(/ /g, deebo.methods.uniSep)
                             name.textContent = deebo.methods.titleCase(stat) + " " + deebo.methods.titleCase(numCol) + " by " + deebo.methods.titleCase(dtCol);
-                            let uDates = []
-                            const dSet = new Set(data.sort( function(a, b) {return a[dtCol] > b[dtCol] ? 1 : -1} ).
-                            map( function(d) {return JSON.stringify(d[dtCol])} ))//unique dates
-                            dSet.forEach( function(v) { 
-                                const pdt = JSON.parse(v)
-                                if(typeof pdt === "string")
-                                    uDates.push(deebo.methods.coerceDate(pdt)) 
-                                else
-                                    uDates.push(pdt)
-                            });
                             const mappedData = data.filter( function(d) {return d[numCol] === 0 || !!d[numCol]}).
                             map( function(d) {return ({strColumn: (d[strCol] || "N/A"), numColumn: d[numCol], dtColumn: d[dtCol]})})
-                            deebo.methods.buildLg(id, mappedData, col, numCol, selOrFil, elCol, uDates, stat, dval, tVal)
+                            deebo.methods.buildLg(id, mappedData, col, numCol, selOrFil, elCol, deebo.methods.currentUniqueDates[dtCol], stat, dval, tVal)
                         }
                     } else {
                         name.textContent = deebo.methods.titleCase(col)
@@ -6171,15 +6184,6 @@ deebo.methods = function() {
                 if(fromOkLingGs.length === 3){//all else has been done
                     useData = valData.filter( function(d) {return d["strColumn"] === (dVal || valOpts[0])})
                 } else {
-                    const dSet = new Set(valData.sort( function(a, b) {return a[col] > b[col] ? 1 : -1} ).
-                    map( function(d) {return JSON.stringify(d[col])} ))//unique dates
-                    dSet.forEach( function(v) { 
-                        const pdt = JSON.parse(v)
-                        if(typeof pdt === "string")
-                            unqDates.push(deebo.methods.coerceDate(pdt)) 
-                        else
-                            unqDates.push(pdt)
-                    });
                     useData = valData.filter( function(d) {return d[useNCol] === 0 || !!d[useNCol]}).
                     map( function(d) {return ({numColumn: d[useNCol], dtColumn: d[col]})})
                 }
@@ -6195,7 +6199,7 @@ deebo.methods = function() {
                     }catch(e){}
                 }
                 if(deebo.methods.topIsInView(parId)){
-                    if (typeof Worker !== 'undefined'/* && deebo.methods.workerUrl !== "http://127.0.0.1:8080/worker.js"*/) {
+                    if (typeof Worker !== 'undefined') {
                         try{
                             // Create a new
                             let worker
@@ -6205,13 +6209,13 @@ deebo.methods = function() {
                                     setTimeout( function() { deebo.methods.drawLineGraph(null, grphCont, "dtColumn", col, "numColumn", useNCol, data.data, data.data.length, selOrFil, timeD, (dVal || sel?.value), strODtCol) })
                             };
                             if(worker)
-                                worker.postMessage({ lineGraph: grphCont.id, data: useData, uDates: (uDates || unqDates), stat: (stat || "avg") });
+                                worker.postMessage({ lineGraph: grphCont.id, data: useData, uDates: (uDates || deebo.methods.currentUniqueDates[col]), stat: (stat || "avg") });
                         }catch(e){
-                            const fUseData = deebo.methods.setUseableLgData(useData, (uDates || unqDates), (stat || "avg"))
+                            const fUseData = deebo.methods.setUseableLgData(useData, (uDates || deebo.methods.currentUniqueDates[col]), (stat || "avg"))
                             setTimeout( function() { deebo.methods.drawLineGraph(null, grphCont, "dtColumn", col, "numColumn", useNCol, fUseData, fUseData.length, selOrFil, timeD, (dVal || sel?.value), strODtCol) })
                         }
                     } else {
-                        const fUseData = deebo.methods.setUseableLgData(useData, (uDates || unqDates), (stat || "avg"))
+                        const fUseData = deebo.methods.setUseableLgData(useData, (uDates || deebo.methods.currentUniqueDates[col]), (stat || "avg"))
                         setTimeout( function() { deebo.methods.drawLineGraph(null, grphCont, "dtColumn", col, "numColumn", useNCol, fUseData, fUseData.length, selOrFil, timeD, (dVal || sel?.value), strODtCol) })
                     }
                 } else {
@@ -6270,15 +6274,19 @@ deebo.methods = function() {
                             const elCol =col.replace(/ /g, deebo.methods.uniSep)
                             name.textContent = deebo.methods.titleCase(stat) + " " + deebo.methods.titleCase(numCol) + " by " + deebo.methods.titleCase(dtCol);
                             let uDates = []
-                            const dSet = new Set(data.sort( function(a, b) {return a[dtCol] > b[dtCol] ? 1 : -1} ).
+                            const dSet = new Set(data.sort( function(a, b) {return a[dtCol] === b[dtCol] ? 0 : (a[dtCol] > b[dtCol] ? 1 : -1)} ).
                             map( function(d) {return JSON.stringify(d[dtCol])} ))//unique dates
-                            dSet.forEach( function(v) { 
+                            const arrFromDset = Array.from(dSet)
+                            const udlen = arrFromDset.length
+                            let u = 0
+                            for(u; u < udlen; u++){
+                                const v = arrFromDset[u]
                                 const pdt = JSON.parse(v)
                                 if(typeof pdt === "string")
                                     uDates.push(deebo.methods.coerceDate(pdt)) 
                                 else
                                     uDates.push(pdt)
-                            });
+                            }
                             const mappedData = data.filter( function(d) {return d[numCol] === 0 || !!d[numCol]}).
                             map( function(d) {return ({strColumn: (d[strCol] || "N/A"), numColumn: d[numCol], dtColumn: d[dtCol]})})
                             deebo.methods.buildLg(id, mappedData, col, numCol, selOrFil, elCol, uDates, stat, val, tval)
@@ -6377,19 +6385,9 @@ deebo.methods = function() {
                             name.classList.add("center")
                             const elCol =col.replace(/ /g, deebo.methods.uniSep)
                             name.textContent = deebo.methods.titleCase(stat) + " " + deebo.methods.titleCase(numCol) + " by " + deebo.methods.titleCase(dtCol);
-                            let uDates = []
-                            const dSet = new Set(data.sort( function(a, b) {return a[dtCol] > b[dtCol] ? 1 : -1} ).
-                            map( function(d) {return JSON.stringify(d[dtCol])} ))//unique dates
-                            dSet.forEach( function(v) { 
-                                const pdt = JSON.parse(v)
-                                if(typeof pdt === "string")
-                                    uDates.push(deebo.methods.coerceDate(pdt)) 
-                                else
-                                    uDates.push(pdt)
-                            });
                             const mappedData = data.filter( function(d) {return d[numCol] === 0 || !!d[numCol]}).
                             map( function(d) {return ({strColumn: (d[strCol] || "N/A"), numColumn: d[numCol], dtColumn: d[dtCol]})});
-                            deebo.methods.buildLg(id, mappedData, col, numCol, selOrFil, elCol, uDates, stat, dval, val)
+                            deebo.methods.buildLg(id, mappedData, col, numCol, selOrFil, elCol, deebo.methods.currentUniqueDates[dtCol], stat, dval, val)
                         } else {
                             name.textContent = deebo.methods.titleCase(col)
                             deebo.methods.buildLineGraphs([col], deebo.methods.numCols, data, selOrFil, stat, val, chosenBtn)
@@ -6489,17 +6487,7 @@ deebo.methods = function() {
                                 data = dataTableService.methods.mainData.filter( function(d) { return true })
                             dlen = data.length
                         }
-                        let unqDates = []
                         const parId = (selOrFil || "") + "insField" + cols[0]
-                        const dSet = new Set(data.sort( function(a, b) {return a[dcol] > b[dcol] ? 1 : -1} ).
-                        map( function(d) {return JSON.stringify(d[dcol])} ))//unique dates
-                        dSet.forEach( function(v) { 
-                            const pdt = JSON.parse(v)
-                            if(typeof pdt === "string")
-                                unqDates.push(deebo.methods.coerceDate(pdt)) 
-                            else
-                                unqDates.push(pdt)
-                        });
                         data = data.filter( function(d) {return d[ncol] === 0 || !!d[ncol]}).
                         map( function(d) {return ({numColumn: d[ncol], dtColumn: d[dcol]})})
                         timeD = document.getElementById(parId + "__timeDiffSel")?.value
@@ -6513,7 +6501,7 @@ deebo.methods = function() {
                             data = data.filter( function(v) {return v["dtColumn"].getTime() >= cutoff} )
                             }catch(e){}
                         }
-                        data = deebo.methods.setUseableLgData(data, unqDates, "avg")
+                        data = deebo.methods.setUseableLgData(data, deebo.methods.currentUniqueDates[dcol], "avg")
                         const pSel = ("#" + parId + " .inner-bg-contain")
                         par = document.getElementById(parId + "__lineGraph") || document.querySelector(pSel);
                         deebo.methods.killAllSelLgBtns(event)
@@ -6625,9 +6613,8 @@ deebo.methods = function() {
                             //numbers
 
                             //dates
-                            let arrFrmSet = []
                             const dSet = new Set(data.filter( function(a) { return !!a[ncol] }).map( function(d) { return d[dcol] }))//unique dates
-                            dSet.forEach( function(v) { arrFrmSet.push(v) });
+                            let arrFrmSet = Array.from(dSet)
                             if(arrFrmSet.length < 2)
                                 markToKill = true//return killLg()
                             const dttype = typeof arrFrmSet[0];
