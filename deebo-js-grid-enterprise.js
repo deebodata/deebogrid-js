@@ -1804,7 +1804,7 @@ deebo.methods = function() {
             },
 
             setCellToEdit: function(e, noHScrl) {
-                if(tblDragEvents.methods.didResizeOnEvent)
+                if(tblDragEvents.methods.didResizeOnEvent || dataTableService.methods.currGroup)
                     return//was really a drag event, not click
                 if(e && e.target && e.target.getAttribute("tabindex") < 0)
                     return e.target.blur()
@@ -2692,7 +2692,7 @@ deebo.methods = function() {
             updateCell: function(cell, prop, elProp, text, indx, horizScrl) {
                 const head = document.getElementById("columnHeader" + elProp)
                 const filInp = document.getElementById("filter" + elProp)
-                const canEdit = deebo.methods.editable && !deebo.methods.shouldValidateEdit(prop, filInp);
+                const canEdit = deebo.methods.editable && !dataTableService.methods.currGroup && !deebo.methods.shouldValidateEdit(prop, filInp);
                 const notNum = (filInp && (filInp.getAttribute("type") != "number" || /(year|yr|fy)/g.test(prop.toLocaleLowerCase()))) ? true : false;
                 const colStyle = dataTableService.methods.getColumnStyle(prop)
                 if(head){
@@ -7425,6 +7425,10 @@ dataTableService.methods = function() {
                         if(ddVals && ddVals.length){
                             const chkdVs = ddVals.filter( function(d) { return d.checked }).
                             map( function(v) { return typeof v.value === "string" ? v.value.toLocaleLowerCase() : v.value })
+                            if(chkdVs.length === ddVals.length){
+                                chkdVs.push(null)
+                                chkdVs.push("")
+                            }
                             return chkdVs.indexOf(colVal) > -1
                         } else {
                             if(typeof colVal === "string")
@@ -7440,6 +7444,10 @@ dataTableService.methods = function() {
                             if(ddVals && ddVals.length){
                                 const chkdVs = ddVals.filter( function(d) { return d.checked }).
                                 map( function(v) { return typeof v.value === "string" ? v.value.toLocaleLowerCase() : v.value })
+                                if(chkdVs.length === ddVals.length){
+                                    chkdVs.push(null)
+                                    chkdVs.push("")
+                                }
                                 return chkdVs.indexOf(colVal) > -1
                             } else {
                                 if(deebo.methods.isADateObject(filterVal) && deebo.methods.isADateObject(colVal))
