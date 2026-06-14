@@ -2783,10 +2783,13 @@ deebo.methods = function() {
                     cell.textContent = useTxt.value
                     if(canEdit)
                         cell.setAttribute("contenteditable", "true")
+                    cell.style.removeProperty("display")
                 } else {
                     cell.innerHTML = useTxt.value
                     if(/ \<a/g.test(useTxt.value) || /a\> /g.test(useTxt.value))
                         cell.style.display = "inline-block"
+                    else
+                        cell.style.removeProperty("display")
                 }
                 if(colStyle)
                     cell.classList.add(colStyle + useTxt.value?.replace(/ /g, deebo.methods.uniSep))
@@ -2828,10 +2831,13 @@ deebo.methods = function() {
                 }
                 if(useTxt.prop === "textContent"){
                     cell.textContent = useTxt.value
+                    cell.style.removeProperty("display")
                 } else {
                     cell.innerHTML = useTxt.value
                     if(/ \<a/g.test(useTxt.value) || /a\> /g.test(useTxt.value))
                         cell.style.display = "inline-block"
+                    else
+                        cell.style.removeProperty("display")
                 }
             },
 
