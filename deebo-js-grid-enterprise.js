@@ -3058,7 +3058,7 @@ deebo.methods = function() {
             execVertScrollDown: function(cols, colLen, currTop, force) {
                 let elrows = document.getElementsByClassName("data-table-row")
                 const maxRows = elrows.length
-                let gap = dataTableService.methods.tblBot - elrows[(maxRows-1)].getBoundingClientRect().bottom;
+                let gap = dataTableService.methods.tblBot - (elrows[(maxRows-1)]?.getBoundingClientRect().bottom || dataTableService.methods.tblBot);
                 if(gap < 0)
                     gap = 0;
                 deebo.methods.fixRowContainer(gap)
@@ -3121,7 +3121,7 @@ deebo.methods = function() {
             execVertScrollUp: function(cols, colLen, currTop, force) {
                 let elrows = document.getElementsByClassName("data-table-row")
                 const maxRows = elrows.length
-                let gap = elrows[0].getBoundingClientRect().top - dataTableService.methods.tblTop
+                let gap = (elrows[0]?.getBoundingClientRect().top || dataTableService.methods.tblTop) - dataTableService.methods.tblTop
                 deebo.methods.fixRowContainer(-gap)
                 setTimeout( function() {
                     let h = 0
@@ -8494,8 +8494,8 @@ groupBy.methods = function() {
                 }
                 groupBy.methods.openGbGrids = {};
                 const len = isOpen.length;
+                deebo.methods.processGrouping(dataTableService.methods.currGroup)
                 if(len){
-                    deebo.methods.processGrouping(dataTableService.methods.currGroup)
                     setTimeout( function() {
                         for(i; i < len; i++){
                             const grp = isOpen[i]
