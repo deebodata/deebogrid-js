@@ -2,7 +2,9 @@
     <title>Javascript Data Grid</title>
 </head>
 <body>
-    <div id="deeboDataGridSection"></div>
+    <div style="margin: 0 auto; width: 89%;">
+        <div id="deeboDataGridSection"></div>
+    </div>
     <script src="./deebo-js-grid-enterprise.js"></script>
     <script>
         deebo.methods.setInitApiUrl("https://d2ffvluimla00s.cloudfront.net/stim_imgs_comm.json")
@@ -36,6 +38,42 @@
                     ]
                 }
         ])
+
+        function setCustomSortObj() {
+            const fields = "category";
+            let obj = {
+            asc: {
+                category: (a, b) => {
+                if(!a[field] && a[field] !== 0)
+                    return 1
+                if(!b[field] && b[field] !== 0)
+                    return -1
+                if(a[field] > b[field])
+                    return 1
+                if((a[field] === b[field]) || (JSON.stringify(a[field]) === JSON.stringify(b[field])))
+                    return 0
+                return -1
+                }
+            },
+            desc: {
+                category: (a, b) => {
+                if(!a[field] && a[field] !== 0)
+                    return 1
+                if(!b[field] && b[field] !== 0)
+                    return -1
+                if(a[field] > b[field])
+                    return -1
+                if((a[field] === b[field]) || (JSON.stringify(a[field]) === JSON.stringify(b[field])))
+                    return 0
+                return 1
+                }
+            },
+            }
+            deebo.methods.setColumnSort(obj);
+        }
+
+        setCustomSortObj()
+
         deebo.methods.setPieUncovered(["party"])
         deebo.methods.initDeeboData("")
     </script>

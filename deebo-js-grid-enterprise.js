@@ -146,6 +146,11 @@ deebo.methods = function() {
                 }
             },
 
+            setColumnSort: function(sortObj) {
+                if(sortObj && typeof sortObj === "object" && Object.hasOwn(sortObj, "asc") && Object.hasOwn(sortObj, "desc"))
+                    dataTableService.methods.setCustomSort(sortObj);
+            },
+
             setPieUncovered: function(command) {
                 if(command === true || command === false){
                     dataTableService.methods.removePieCovers = command
@@ -7490,6 +7495,12 @@ dataTableService.methods = function() {
 
             removePieCovers: false,
 
+            customSort: { asc: {}, desc: {} },
+
+            setCustomSort: function(sort) {
+                dataTableService.methods.customSort = {...sort};
+            },
+
             getColumnStyle: function(col) {
                 const foundCol = dataTableService.methods.columnStyles.find( function(c) {return c.column === col})?.column
                 return foundCol ? ("data-cell-" + foundCol + "-") : "";
@@ -7599,18 +7610,24 @@ dataTableService.methods = function() {
                 const len = sortOrder.length
                 for(var i = (len-1); i >= 0; i--){
                     const field = sortOrder[i]
-                    const dir = obj[field]["sort"] === "asc" ? 1 : -1;
-                    sortData = sortData.sort( function(a, b) { 
-                        if(!a[field] && a[field] !== 0)
-                            return 1
-                        if(!b[field] && b[field] !== 0)
-                            return -1
-                        if(a[field] > b[field])
-                            return (1*dir)
-                        if((a[field] === b[field]) || (JSON.stringify(a[field]) === JSON.stringify(b[field])))
-                            return 0
-                        return (-1*dir)
-                    })
+                    const sortDir = obj[field]["sort"];
+                    const dir = sortDir === "asc" ? 1 : -1;
+                    const custom = dataTableService.methods.customSort[sortDir][field];
+                    if(custom && typeof custom === "function"){
+                        sortData = sortData.sort(custom);
+                    } else {
+                        sortData = sortData.sort( function(a, b) { 
+                            if(!a[field] && a[field] !== 0)
+                                return 1
+                            if(!b[field] && b[field] !== 0)
+                                return -1
+                            if(a[field] > b[field])
+                                return (1*dir)
+                            if((a[field] === b[field]) || (JSON.stringify(a[field]) === JSON.stringify(b[field])))
+                                return 0
+                            return (-1*dir)
+                        })
+                    }
                 }
                 return sortData
             },
