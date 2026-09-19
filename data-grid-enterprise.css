@@ -958,6 +958,73 @@ input.edit-input{
     -webkit-box-shadow:0 1px 3px 1px var(--grid-color)
 }
 
+.btn-page{
+    font-size: 16px;
+    margin-right: 25px;
+    vertical-align: middle;
+}
+
+.last-btn-opt{
+    margin-right: 5px !important;
+}
+
+.btn-page-selected{
+    font-weight: bold;
+    box-shadow:0 0 1px 1px black;
+    -webkit-box-shadow:0 0 1px 1px black
+}
+
+.btn-page-back, .btn-page-forward, .btn-page-first, .btn-page-last{
+    padding: 0;
+    width: 24px;
+    height: 24px;
+    border-radius: 50%;
+    vertical-align: middle;
+    color: var(--accent-color);
+}
+
+.btn-page-back, .btn-page-forward{
+    margin: 0 3px;
+}
+
+.btn-page-first{
+    margin: 0 3px 0 0;
+}
+
+.btn-page-last{
+    margin: 0 7px 0 3px;
+}
+
+.btn-page-back:hover, .btn-page-forward:hover, .btn-page-first:hover, .btn-page-last:hover{
+    box-shadow:0 0 3px 2px var(--grid-color);
+    -moz-box-shadow:0 0 3px 2px var(--grid-color);
+    -webkit-box-shadow:0 0 3px 2px var(--grid-color)
+}
+
+.btn-page-back{
+    position: relative;
+}
+
+.btn-page-back .material-icons{
+    top: 0;
+    left: 5px;
+    position: absolute;
+}
+
+@media screen and (min-width:860px){
+    .btn-page-back, .btn-page-forward{
+        margin: 0 7px;
+    }
+
+    .btn-page-first{
+        margin: 0 7px 0 0;
+    }
+
+    .btn-page-last{
+        margin: 0 15px 0 7px;
+    }
+}
+
 #skipTo{
     min-width: 120px;
 }

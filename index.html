@@ -40,7 +40,7 @@
         ])
 
         function setCustomSortObj() {
-            const fields = "category";
+            const field = "category";
             let obj = {
             asc: {
                 category: (a, b) => {
@@ -73,8 +73,27 @@
         }
 
         setCustomSortObj()
+        deebo.methods.setPagination(true)
+        // deebo.methods.setServerSideTotal(50000)
+        deebo.methods.setRowsPerPage(100.5)
 
         deebo.methods.setPieUncovered(["party"])
-        deebo.methods.initDeeboData("")
+        deebo.methods.initDeeboData()
+
+        function dataFiltered(data) {
+            console.log(data)
+        }
+
+        function pageChange(event) {
+            console.log(event)
+            deebo.methods.setPageLoadMessage("Loading page " + (event.skip+1) + "...")
+            deebo.methods.setLoading(deebo.methods.pageLoadMessage)
+            setTimeout( function() {
+                console.log(myData.slice(event.skip*event.take, ((event.skip*event.take) + event.take)))
+                deebo.methods.initializeLocalData([...myData].slice(event.skip*event.take, ((event.skip*event.take) + event.take)))
+            }, 2500)
+        }
+
+        var myData = []
     </script>
 </body>

@@ -69,6 +69,12 @@ deebo.methods = function() {
             localDataSet: [ { name: "Dave", salary: 200000, title: "CEO" }, {name: "Amy", salary: 164000, title: "CIO" }, 
                 {name: "Ted", salary: 60000, title: "QA Engineer" }, {name: "Sarah", salary: 95000, title: "Engineer" }, 
                 {name: "Adam", salary: 164000, title: "CFO" }, {name: "Krishna", salary: 105000, title: "Architect" }],
+            /*real paginator props*/
+            paginate: false,
+            handlingPageChange: false,
+            pageLoadMessage: "Loading...",
+            lastPage: 1,
+            /*real paginator props*/
 
             //PROGRAMMABILITY
             setInitMethod: function(method) {
@@ -88,7 +94,7 @@ deebo.methods = function() {
 
             setDfltGridHgt: function(gridHght) {
                 if(gridHght && typeof gridHght === "number")
-                    deebo.methods.dTblHeight = gridHght
+                    deebo.methods.dTblHeight = Math.ceil(gridHght)
             },
 
             setDfltRowHgt: function(rowHght) {
@@ -166,7 +172,7 @@ deebo.methods = function() {
             },
 
             setLoadingMsg: function(msg) {
-                if(msg && typeof msg === "string")
+                if(typeof msg === "string")
                     deebo.methods.loadingMsg = msg;
             },
 
@@ -177,7 +183,7 @@ deebo.methods = function() {
             },
 
             setShowRowNums: function(show) {
-                if(show === false || show === true)
+                if(!deebo.methods.paginate && (show === false || show === true))
                     deebo.methods.rowNumbers = show
             },
 
@@ -199,6 +205,33 @@ deebo.methods = function() {
             setNumDistLimit: function(limit) {
                 if(limit && typeof limit === "number")
                     deebo.methods.numDistLim = limit
+            },
+
+            setPagination: function(pagi) {
+                if(typeof pagi === "boolean"){
+                    deebo.methods.paginate = pagi;
+                    deebo.methods.rowNumbers = false;
+                }
+            },
+
+            setRowsPerPage: function(rows) {
+                if(typeof rows === "number" && rows > 0)
+                    dataTableService.methods.rowsPerPage = Math.ceil(rows);
+            },
+
+            setServerSideTotal: function(total) {
+                if(typeof total === "number")
+                    dataTableService.methods.serverSideTotal = Math.ceil(total);
+            },
+
+            setServerSideFilteredTotal: function(total) {
+                if(typeof total === "number")
+                    dataTableService.methods.serverSideFilteredTotal = Math.ceil(total);
+            },
+
+            setPageLoadMessage: function(msg) {
+                if(typeof msg === "string")
+                    deebo.methods.pageLoadMessage = msg
             },
             //PROGRAMMABILITY
 
@@ -623,6 +656,8 @@ deebo.methods = function() {
 
             
             setRowNumbers: function() {
+                if(deebo.methods.paginate)
+                    return;
                 const rows = document.getElementsByClassName("data-table-row")
                 const rbod = document.getElementById("rowNumBody")
                 let r = 0
@@ -728,7 +763,7 @@ deebo.methods = function() {
                 if(dataTableService.methods.arefilSrtTrkPropsDefault()){
                     deebo.methods.renderCurrData()
                     document.getElementById("btnReset").disabled = false
-                    const dct = dataTableService.methods.currFilData.length.toLocaleString(undefined, { maximumFractionDigits: 0 })
+                    const dct = dataTableService.methods.getTotal().toLocaleString(undefined, { maximumFractionDigits: 0 })
                     const tRows = document.getElementById("totalRows")
                     if(tRows){
                         tRows.textContent = dct
@@ -975,13 +1010,14 @@ deebo.methods = function() {
 
             setLoading: function(err) {
                 const tbody = document.getElementById("dataTableBody")
-                if(tbody){
+                const rowCont = document.getElementById(deebo.methods.rowContId)
+                if(tbody && rowCont){
                     const dtr = document.getElementsByClassName("data-table-row")[0]
                     if(err && dtr)
-                        tbody.removeChild(dtr)
+                        rowCont.removeChild(dtr)
                     const lrow = document.createElement("div")
                     deebo.methods.styleEmptyFilDataRow(lrow, tbody, null, (err || deebo.methods.loadingMsg))
-                    tbody.appendChild(lrow)
+                    rowCont.appendChild(lrow)
                 }
             },
 
@@ -1005,6 +1041,7 @@ deebo.methods = function() {
                 const iTog = document.createElement("i")
                 const sTog = document.createElement("span")
                 const btnR = document.createElement("button")
+                const noCharts = dataTableService.methods.serverSideTotal === 0 ? true : false;
                 inp.type = "text"
                 inp.id = "topLevelDataFilter"
                 inp.name = "topLevelDataFilter"
@@ -1030,11 +1067,13 @@ deebo.methods = function() {
                 sxg.className += " v-mid"
                 sxg.textContent = " Grouping"
                 //<i class="material-icons error-message heavy v-mid" aria-hidden="false">close</i>&nbsp;<span class="md-text v-mid">Grouping</span>
-                btnCharts.type = "button"
-                btnCharts.id = "btnCharts"
-                btnCharts.className = "no-btn"
-                btnCharts.className += " btn-chart";
-                btnCharts.disabled = true
+                if(noCharts){
+                    btnCharts.type = "button"
+                    btnCharts.id = "btnCharts"
+                    btnCharts.className = "no-btn"
+                    btnCharts.className += " btn-chart";
+                    btnCharts.disabled = true
+                }
                 iChart.className = "material-icons";
                 iChart.className += " v-mid"
                 iChart.ariaHidden = "false"
@@ -1056,14 +1095,17 @@ deebo.methods = function() {
                 sTog.textContent = " Selected Rows"
                 btnXg.appendChild(ixg)
                 btnXg.appendChild(sxg)
-                btnCharts.appendChild(iChart)
-                btnCharts.appendChild(sChart)
+                if(noCharts){
+                    btnCharts.appendChild(iChart)
+                    btnCharts.appendChild(sChart)
+                }
                 btnTog.appendChild(iTog)
                 btnTog.appendChild(sTog)
                 controls.className = "controls"
                 controls.appendChild(inp)
                 controls.appendChild(btnXg)
-                controls.appendChild(btnCharts)
+                if(noCharts)
+                    controls.appendChild(btnCharts)
                 controls.appendChild(btnX)
                 controls.appendChild(btnTog)
                 controls.appendChild(btnR)
@@ -1176,7 +1218,7 @@ deebo.methods = function() {
                 pagiT.appendChild(rs)
                 pagiQ.className = "qtr-wid"
                 pagiQ.className += " right"
-                sLbl.className = "skip=lbl"
+                sLbl.className = "skip-lbl"
                 sLbl.textContent = "Jump To Row "
                 sLbl.setAttribute("for", "skipTo")
                 sdiv.className = "skip-to-contain"
@@ -1195,6 +1237,81 @@ deebo.methods = function() {
                 pagi.appendChild(pagiQ)
                 foot.appendChild(pagi)
                 return foot;
+            },
+
+            createPaginator: function() {
+                const foot = document.createElement("div")
+                const pagi = document.createElement("div")
+                const pagiT = document.createElement("div")
+                const pagiQ = document.createElement("div")
+                const pt = document.createElement("span")
+                const trws = document.createElement("span")
+                const ps = document.createElement("span")
+                const btnCont = document.createElement("div")
+                foot.id = "tableFooter"
+                foot.className = "hide"
+                pagi.className = "paginator"
+                pagi.className += " right";
+                pagiT.className = "half-wid"
+                //span #paginatorTracker>Rows 1-25</span> of <span #totalRows class="heavy"></span>&nbsp;&nbsp;&bull;&nbsp;&nbsp;<span #currPage>Page 1/1</span>&nbsp;
+                pt.id = "paginatorTracker"
+                pt.textContent = "Rows 1-25"
+                trws.id = "totalRows"
+                trws.className = "heavy"
+                ps.id = "currPage"
+                ps.textContent = "Page 1/1";
+                pagiT.appendChild(pt)
+                pagiT.appendChild(document.createTextNode(" of "))
+                pagiT.appendChild(trws)
+                pagiT.innerHTML += "&nbsp;&nbsp;&bull;&nbsp;&nbsp;";
+                pagiT.appendChild(ps)
+                pagiQ.className = "half-wid"
+                btnCont.id = "dynPageButtons";
+                btnCont.className = "inline";
+                pagiQ.appendChild(deebo.methods.createPageButton("first"))
+                pagiQ.innerHTML += "&nbsp;"
+                pagiQ.appendChild(deebo.methods.createPageButton("back"))
+                pagiQ.innerHTML += "&nbsp;"
+                pagiQ.appendChild(btnCont);
+                pagiQ.innerHTML += "&nbsp;"
+                pagiQ.appendChild(deebo.methods.createPageButton("forward"))
+                pagiQ.innerHTML += "&nbsp;";
+                pagiQ.appendChild(deebo.methods.createPageButton("last"))
+                pagi.appendChild(pagiT)
+                pagi.appendChild(pagiQ)
+                foot.appendChild(pagi)
+                return foot;
+            },
+
+            createPageButton: function(name) {
+                const btn = document.createElement("button")
+                const ic = document.createElement("i")
+                btn.type = "button"
+                btn.className = "no-btn"
+                ic.className = "material-icons";
+                ic.setAttribute("aria-hidden", "false")
+                if(name === "first"){
+                    btn.id = "btnPageFirst"
+                    btn.className += " btn-page-first";
+                    ic.textContent = "first_page"
+                }
+                if(name === "back"){
+                    btn.id = "btnPageBack"
+                    btn.className += " btn-page-back";
+                    ic.textContent = "arrow_back_ios"
+                }
+                if(name === "forward"){
+                    btn.id = "btnPageForward"
+                    btn.className += " btn-page-forward";
+                    ic.textContent = "arrow_forward_ios"
+                }
+                if(name === "last"){
+                    btn.id = "btnPageLast"
+                    btn.className += " btn-page-last";
+                    ic.textContent = "last_page";
+                }
+                btn.appendChild(ic)
+                return btn;
             },
 
             createInsightsCont: function() {
@@ -1267,7 +1384,8 @@ deebo.methods = function() {
                 exBtn.appendChild(exI)
                 exLbl.appendChild(exBtn)
                 exCont.appendChild(exLbl)
-                cont.appendChild(canGb)
+                if(!deebo.methods.paginate)
+                    cont.appendChild(canGb)
                 cont.appendChild(exCont)
                 return cont;
             },
@@ -1287,9 +1405,14 @@ deebo.methods = function() {
                         frag.appendChild(deebo.methods.createFCellDrag())
                         frag.appendChild(deebo.methods.createRowNumCont())
                         frag.appendChild(deebo.methods.createDataTable())
-                        frag.appendChild(deebo.methods.createGridFooter())
+                        if(deebo.methods.paginate){
+                            frag.appendChild(deebo.methods.createPaginator())
+                        } else {
+                            frag.appendChild(deebo.methods.createGridFooter())
+                        }
                         frag.appendChild(deebo.methods.createInsightsCont())
-                        frag.appendChild(deebo.methods.createGridAux())
+                        if(dataTableService.methods.serverSideTotal === 0)
+                            frag.appendChild(deebo.methods.createGridAux())
                         sect.appendChild(frag)
                         setTimeout( function() {
                             deebo.methods.initListeners()
@@ -1335,16 +1458,20 @@ deebo.methods = function() {
                 deebo.methods.setLoading()
             },
 
-            initializeLocalData: function() { 
+            initializeLocalData: function(pageChangeData) { 
                 const blkEdit = !deebo.methods.editable
                 const rowNs = !deebo.methods.rowNumbers
+                if(pageChangeData)
+                    deebo.methods.setLocalDataSet(pageChangeData.filter( function(d) { return true }))
                 let data = deebo.methods.localDataSet.filter( function(d) { return true });
                 deebo.methods.removeEmptyLoadRows()
                 data = deebo.methods.convertNeededCols(data)
                 dataTableService.methods.mainData = data.filter( function(d) { return true })
                 dataTableService.methods.currFilData = data.filter( function(d) { return true })
                 dataTableService.methods.mainDataLen = dataTableService.methods.mainData.length
-                deebo.methods.buildInitUiDataTable(data, deebo.methods.themeColor1, deebo.methods.themeColor2, blkEdit, rowNs)//any 2 css colors
+                if(!pageChangeData)
+                    return deebo.methods.buildInitUiDataTable(data, deebo.methods.themeColor1, deebo.methods.themeColor2, blkEdit, rowNs)//any 2 css colors
+                deebo.methods.renderCurrData(false)
             },
 
             buildInitUiDataTable: function(data, color1, color2, blockEditing, hideRowNumbers) {//will be array of objects
@@ -1352,7 +1479,8 @@ deebo.methods = function() {
                     const cols = Object.keys(data[0])         
                     const head = document.getElementById("dataTableHeaders")
                     const tbody = document.getElementById("dataTableBody")
-                    try{ tbody.removeChild(document.getElementsByClassName("data-table-row")[0]) }catch(e){}
+                    const rcont = document.getElementById(deebo.methods.rowContId)
+                    try{ rcont.removeChild(document.getElementsByClassName("data-table-row")[0]) }catch(e){}
                     if(blockEditing)
                         deebo.methods.editable = false;
                     let i = 0; let n = 0;
@@ -1386,7 +1514,8 @@ deebo.methods = function() {
                             dataTableService.methods.visibleCols.push(col)
                         deebo.methods.columnNames.push(col)
                     }
-                    deebo.methods.handleColAnyDDFilters(data, cols)
+                    if(dataTableService.methods.serverSideTotal === 0)
+                        deebo.methods.handleColAnyDDFilters(data, cols)
                     const addCell = function(text, prop, row, indx, vis) {
                         const cell = document.createElement("div")
                         const elProp = prop?.replace(/ /g, deebo.methods.uniSep) 
@@ -1446,7 +1575,7 @@ deebo.methods = function() {
                         if(row && prop && row.children.length === 1)
                             deebo.methods.createSelectRowCheck(row.getAttribute("data-index"))
                     }
-                    const limit = Math.min(init, len)
+                    const limit = deebo.methods.paginate ? Math.min(dataTableService.methods.rowsPerPage, len) : Math.min(init, len)
                     const horizLim = Math.min((maxCols+1), colLen)
                     const blw = document.getElementById("belowArea")
                     const rct = document.getElementById(deebo.methods.rowContId)
@@ -1466,33 +1595,41 @@ deebo.methods = function() {
                     }
                     blw.style.width=deebo.methods.useRowWid
                     document.getElementById("aboveArea").style.width=deebo.methods.useRowWid
-                    deebo.methods.setLastRowIndex()
+                    if(!deebo.methods.paginate)
+                        deebo.methods.setLastRowIndex()
                     deebo.methods.blockEventsInCells()
                     deebo.methods.toggleNonInitCtrlBtns(true)
                     document.getElementById("tableFooter").className = "data-table-footer"
                     deebo.methods.setUpPaginatorOnTblLoad()
+                    if(deebo.methods.paginate)
+                        deebo.methods.setPagi(1)
                     const dct = len.toLocaleString(undefined, { maximumFractionDigits: 0 })
                     const tRows = document.getElementById("totalRows")
-                    if(tRows){
+                    if(tRows && !deebo.methods.paginate){
                         tRows.textContent = dct
                         deebo.methods.handleFilSDataStr(tRows)
                     }
                     deebo.methods.setExportCount(dct)
-                    document.querySelector("#exportContain .btn-deebo-dd").disabled = false
+                    const expC = document.querySelector("#exportContain .btn-deebo-dd")
+                    if(expC)
+                        expC.disabled = false
                     deebo.methods.setTblScrollListeners(true)
                     window.addEventListener("resize", dataTableService.methods.setTableBounds)
                     window.addEventListener("scroll", dataTableService.methods.setTableBounds)
                     window.addEventListener("mousedown", deebo.methods.setMouseDown)
-                    window.addEventListener("mouseup", deebo.methods.handleScrlBarDrag)
+                    if(!deebo.methods.paginate)
+                        window.addEventListener("mouseup", deebo.methods.handleScrlBarDrag)
                     window.addEventListener("click", deebo.methods.testEditDDs)
                     window.addEventListener("click", deebo.methods.handleSkipToWinClick)
-                    document.getElementById("skipTo").setAttribute("max", len.toString())
+                    if(!deebo.methods.paginate)
+                        document.getElementById("skipTo").setAttribute("max", len.toString())
                     deebo.methods.handleSkipToDD(len)
                     deebo.methods.handleTheme(color1, color2)
                     if(len >= 500000)
                         deebo.methods.doRowsMod = 15
-                    if(len)
-                        document.getElementById("btnCharts").disabled = false
+                    const btnCharts = document.getElementById("btnCharts")
+                    if(len && btnCharts)
+                        btnCharts.disabled = false
                     setTimeout( function() { 
                         deebo.methods.testHideMinBtn()
                         deebo.methods.setColHeaderHgt()
@@ -1501,7 +1638,7 @@ deebo.methods = function() {
                         dataTableService.methods.setTableBounds()
                     })
                     setTimeout( function() {
-                        if(len > init){
+                        if(!deebo.methods.paginate && len > init){
                             let total = 0
                             let z = deebo.methods.lastElRowIndex + 1
                             for(z; z < len; z++){
@@ -2116,6 +2253,7 @@ deebo.methods = function() {
             handleFDragTab: function(e) {
                 if(e && deebo.methods.isTabKey(e)){
                     const cell = document.getElementsByClassName("dragger-cell-focused")[0]
+                    const skp = document.getElementById("skipTo")
                     if(cell){
                         deebo.methods.autoScrollOnEdit = true;
                         if(cell.nextElementSibling){
@@ -2125,8 +2263,10 @@ deebo.methods = function() {
                             const nxtRowCell = cell.parentElement?.nextElementSibling?.firstElementChild
                             if(nxtRowCell)
                                 nxtRowCell.focus()
-                            else
-                                document.getElementById("skipTo").focus()
+                            else {
+                                if(skp)
+                                    skp.focus()
+                            }
                         }
                     }
                 }
@@ -2289,8 +2429,11 @@ deebo.methods = function() {
                             const nxtRowCell = e.target?.parentElement?.nextElementSibling?.firstElementChild
                             if(nxtRowCell)
                                 nxtRowCell.focus()
-                            else
-                                document.getElementById("skipTo").focus()
+                            else{
+                                const skp = document.getElementById("skipTo")
+                                if(skp)
+                                    skp.focus()
+                            }
                         }
                     }
                 }
@@ -2426,9 +2569,9 @@ deebo.methods = function() {
                 try{
                     let rule1; let rule1a; let rule2; let rule3; let rule4; let rule5; let rule6; let rule7;
                     if(co1){
-                        rule1 = ".col-header span, .col-header sup, .col-header button .material-icons, " + 
+                        rule1 = ".col-header span, .col-header sup, .col-header button .material-icons, .paginator button .material-icons, .paginator label, .btn-page," + 
                         ".row-group-panel button span, .row-group-panel button i, .data-table-footer div{color: "+co1+"}";
-                        rule1a = ".col-header select, .col-header input:not(input[type=file]), #skipTo{box-shadow:0 0 1px 1px "+co1+";" +
+                        rule1a = ".col-header select, .col-header input:not(input[type=file]), #skipTo, .btn-page-selected{box-shadow:0 0 1px 1px "+co1+";" +
                         "-webkit-box-shadow:0 0 1px 1px "+co1+"}";
                     }
                     if(co2){
@@ -2679,7 +2822,7 @@ deebo.methods = function() {
                     deebo.methods.execHorizScroll(left)
                 /*horiz scroll*/
                 /*vert scroll*/
-                if(top === deebo.methods.verticalRest){
+                if(deebo.methods.paginate || top === deebo.methods.verticalRest){
                     if(!deebo.methods.autoScrollOnEdit)
                         deebo.methods.clearValidatedEdit()
                     return deebo.methods.setRowSelChecksPlacement(); 
@@ -2740,7 +2883,8 @@ deebo.methods = function() {
                     deebo.methods.cleanRowChecks()
                     if(deebo.methods.listenToCellDraggerMouseMove)
                         deebo.methods.settleCellDragger()
-                    setTimeout(deebo.methods.cleanUpPossibles, 0)
+                    if(!deebo.methods.paginate)
+                        setTimeout(deebo.methods.cleanUpPossibles, 0)
                     setTimeout(deebo.methods.setRowSelChecksPlacement, 0)
                     setTimeout(deebo.methods.blockEventsInCells, 100)
                 }, 0)
@@ -3382,6 +3526,7 @@ deebo.methods = function() {
                             if(!deebo.methods.currGroupValues.length){
                                 if(deebo.methods.handleTblHtTO)
                                     clearTimeout(deebo.methods.handleTblHtTO)
+                                if(!deebo.methods.paginate)
                                 deebo.methods.handleTblHtTO = setTimeout(deebo.methods.handleRowsOnHeightIncrease, 250) 
                             } else {
                                 setTimeout( function() { 
@@ -4206,7 +4351,7 @@ deebo.methods = function() {
                     }
                     deebo.methods.renderCurrData(null, (topFilt || field))
                     document.getElementById("btnReset").disabled = false
-                    const dct = dataTableService.methods.currFilData.length.toLocaleString(undefined, { maximumFractionDigits: 0 })
+                    const dct = dataTableService.methods.getTotal().toLocaleString(undefined, { maximumFractionDigits: 0 })
                     const tRows = document.getElementById("totalRows")
                     if(tRows){
                         tRows.textContent = dct
@@ -4248,6 +4393,18 @@ deebo.methods = function() {
                 }
             },
 
+            handlePageChange: function(data) {
+                dataTableService.methods.mainData = []
+                dataTableService.methods.currFilData = []
+                dataTableService.methods.mainDataLen = 0
+                const tbody = document.getElementById("dataTableBody")
+                tbody.innerHTML = ""
+                try{document.getElementById("dataTableChecks").innerHTML = ""}catch(e){}
+                deebo.methods.resetTblBody(tbody)
+                deebo.methods.clearValidatedEdit(null, true)
+                try{pageChange(data)}catch(e){}
+            },
+
             resetTblBody: function(tbody) {
                 const abv = document.createElement("div")
                 const blw = document.createElement("div")
@@ -4280,19 +4437,30 @@ deebo.methods = function() {
                 document.getElementById("dataTableChecks").innerHTML = ""
                 if(deebo.methods.rowNumbers)
                     try{ document.getElementById("rowNumBody").innerHTML = ""}catch(e){}
-                let n = 0;
+                const filTrkr = dataTableService.methods.getFilTrkerData();
+                if(deebo.methods.paginate && dataTableService.methods.serverSideTotal > 0 && Object.keys(filTrkr).length)//only on ss pagination
+                    try{dataFiltered({ topLevelFilter: document.getElementById("topLevelDataFilter").value, columnConfig: filTrkr, sortOrder: [...dataTableService.methods.sortOrder] })}catch(e){}
+                if(deebo.methods.paginate && dataTableService.methods.serverSideTotal > 0){
+                    let ssN = ((dataTableService.methods.currPage-1)*dataTableService.methods.rowsPerPage)
+                    if(ssN > dataTableService.methods.getTotal())
+                        dataTableService.methods.currPage = 1//force page 1
+                }
+                let n = (deebo.methods.paginate && dataTableService.methods.serverSideTotal === 0) ? ((dataTableService.methods.currPage-1)*dataTableService.methods.rowsPerPage) : 0;
                 dataTableService.methods.currMapping = {}
                 const defNum = dataTableService.methods.defltRHgtNum
                 const init = Math.ceil(deebo.methods.dTblHeight/defNum)+deebo.methods.rowElsPad;
                 const btnCharts = document.getElementById("btnCharts")
-                const len = dataTableService.methods.currFilData?.length
+                const len = (deebo.methods.paginate && dataTableService.methods.serverSideTotal === 0) ? Math.min(n+dataTableService.methods.rowsPerPage, dataTableService.methods.currFilData.length) : dataTableService.methods.currFilData.length;
                 const rct = document.getElementById(deebo.methods.rowContId)
-                document.getElementById("skipTo").setAttribute("max", len.toString())
+                const skp = document.getElementById("skipTo")
+                if(skp)
+                    skp.setAttribute("max", len.toString())
                 deebo.methods.handleSkipToDD(len)
                 if(!len){//always just add 1
                     const row = document.createElement("div")
                     deebo.methods.styleEmptyFilDataRow(row, tbody, tbodyX)
-                    btnCharts.disabled = true
+                    if(btnCharts)
+                        btnCharts.disabled = true
                     const tRows = document.getElementById("totalRows")
                     if(tRows){
                         tRows.textContent = "0";
@@ -4399,7 +4567,7 @@ deebo.methods = function() {
                         didXScrl = true
                     }
                 }
-                const limit = Math.min(init, len)
+                const limit = deebo.methods.paginate ? len : Math.min(init, len);
                 const blw = document.getElementById("belowArea")
                 let horizLim = Math.min(deebo.methods.setMaxCols(window.innerWidth), colLen)
                 deebo.methods.useRowWid = deebo.methods.getAllColWidth(colLen - deebo.methods.getMiniColCount()) + "px";
@@ -4435,9 +4603,11 @@ deebo.methods = function() {
                     row.style.height = dataTableService.methods.defltRHgt
                     dataTableService.methods.currMapping[n] = index
                 }
-                deebo.methods.setLastRowIndex()
+                if(!deebo.methods.paginate)
+                    deebo.methods.setLastRowIndex()
                 deebo.methods.blockEventsInCells()
-                btnCharts.disabled = false
+                if(btnCharts)
+                    btnCharts.disabled = false
                 blw.style.width=deebo.methods.useRowWid
                 document.getElementById("aboveArea").style.width=deebo.methods.useRowWid
                 const tRows = document.getElementById("totalRows")
@@ -4446,8 +4616,16 @@ deebo.methods = function() {
                     deebo.methods.handleFilSDataStr(tRows)
                 }
                 dataTableService.methods.mapperWorkerId += 1//a reset but needs to incr so prev don't affect mapping 
+                if(deebo.methods.paginate){
+                    deebo.methods.setPagi(dataTableService.methods.currPage)
+                    if(dataTableService.methods.serverSideTotal === 0 && n > len && dataTableService.methods.currFilData.length){
+                        const page1 = document.getElementById("btnPageFirst")
+                        if(page1)
+                            page1.click()
+                    }
+                }
                 if(len){
-                    if(len > init){
+                    if(!deebo.methods.paginate && len > init){
                         let total = 0
                         let z = deebo.methods.lastElRowIndex + 1
                         for(z; z < len; z++){
@@ -4526,7 +4704,9 @@ deebo.methods = function() {
                 dataTableService.methods.resetFilSrtTracker()
                 dataTableService.methods.currFilData = dataTableService.methods.mainData?.filter( function(d) { return true })
                 deebo.methods.renderCurrData(true, col)
-                document.getElementById("skipTo").value = ""
+                const skp = document.getElementById("skipTo")
+                if(skp)
+                    skp.value = ""
                 document.getElementById("topLevelDataFilter").value = ""
                 const dct = dataTableService.methods.currFilData?.length.toLocaleString(undefined, { maximumFractionDigits: 0 })
                 const tRows = document.getElementById("totalRows")
@@ -5054,12 +5234,16 @@ deebo.methods = function() {
                     deebo.methods.clearValidatedEdit(null, true)
                     deebo.methods.toggleTopControls(true)
                     window.addEventListener("scroll", deebo.methods.keepSelInsightsOnRows)
-                    document.getElementById("skipTo").value = ""
+                    const skp = document.getElementById("skipTo")
+                    if(skp)
+                        skp.value = ""
                 }
             },
 
             toggleTopControls: function(disable) {
-                document.getElementById("btnCharts").disabled = disable
+                const btnCharts = document.getElementById("btnCharts")
+                if(btnCharts)
+                    btnCharts.disabled = disable
                 document.getElementById("btnReset").disabled = disable
                 document.getElementById("topLevelDataFilter").disabled = disable
             },
@@ -7330,7 +7514,9 @@ deebo.methods = function() {
                         val = parseInt(e.target.textContent)
                     if(val){
                         const useVal = Math.min(val, (dataTableService.methods.currFilData?.length || 0))
-                        document.getElementById("skipTo").value = useVal
+                        const skp = document.getElementById("skipTo")
+                        if(skp)
+                            skp.value = useVal
                         deebo.methods.handleSkipToPage(useVal)
                     } else {
                         deebo.methods.closeSkipOpts()
@@ -7404,46 +7590,153 @@ deebo.methods = function() {
             },
             //PAGINATOR
 
+            setBtnPages: function() {
+                const cont = document.getElementById("dynPageButtons");
+                let i = Math.max(1, dataTableService.methods.currPage-3)
+                cont.innerHTML = "";
+                const max = Math.min(deebo.methods.lastPage, dataTableService.methods.currPage+3);//7 page buttons
+                for(i; i <= max; i++){
+                    const btn = document.createElement("button")
+                    btn.type = "button";
+                    btn.id = "btnPage" + i;
+                    btn.className = "no-btn";
+                    btn.className += " btn-page"
+                    if(i === max)
+                        btn.className += " last-btn-opt";
+                    if(i === dataTableService.methods.currPage)
+                        btn.className += " btn-page-selected"
+                    btn.onclick = deebo.methods.handlePaginatorChange
+                    btn.textContent = i.toLocaleString(undefined, {maximumFractionDigits: 0})
+                    cont.appendChild(btn)
+                }
+            },
+
+            setPagi: function(page) {
+                const cp = document.getElementById("currPage")
+                if(cp){
+                    const r = (dataTableService.methods.currPage-1)*dataTableService.methods.rowsPerPage;
+                    deebo.methods.setPageTracker(Math.min(r+dataTableService.methods.rowsPerPage, dataTableService.methods.getTotal()))
+                    const pMax = Math.ceil(dataTableService.methods.getTotal()/dataTableService.methods.rowsPerPage);
+                    cp.textContent = ("Page "+page.toLocaleString(undefined, { maximumFractionDigits: 0 })+ "/" + 
+                    pMax.toLocaleString(undefined, { maximumFractionDigits: 0 }));
+                    deebo.methods.lastPage = Math.ceil(dataTableService.methods.getTotal()/dataTableService.methods.rowsPerPage)
+                    deebo.methods.setBtnPages()
+                }
+            },
+
+            handlePaginatorChange: function(event) {
+                if(deebo.methods.showCharts)
+                    return
+                const dir = event.target.id?.replace(/btnPage/g, "") || event.target.parentElement?.id.replace(/btnPage/g, "")
+                // if(!dir || (dir && ["Back", "Forward", "First", "Last"].indexOf(dir) < 0))
+                //     return
+                try{
+                    const num = parseInt(dir)
+                    if(!isNaN(num) && !/[a-zA-z]/g.test(dir)){
+                        if(dataTableService.methods.currPage === num)
+                            return;
+                        dataTableService.methods.currPage = num;
+                    }
+                } catch(e) {
+                    console.log(e)
+                }
+                const max = Math.ceil(dataTableService.methods.getTotal()/dataTableService.methods.rowsPerPage)
+                if(dir === "Back"){
+                    if(dataTableService.methods.currPage > 1)
+                        dataTableService.methods.currPage -= 1
+                    else
+                        return
+                }
+                if(dir === "Forward"){
+                    if(dataTableService.methods.currPage < max)
+                        dataTableService.methods.currPage += 1
+                    else
+                        return
+                }
+                if(dir === "First"){
+                    if(dataTableService.methods.currPage === 1)
+                        return
+                    dataTableService.methods.currPage = 1
+                }
+                if(dir === "Last"){
+                    if(dataTableService.methods.currPage === max)
+                        return
+                    dataTableService.methods.currPage = max
+                }
+                deebo.methods.setPagi(dataTableService.methods.currPage)
+                if(dataTableService.methods.serverSideTotal > 0)
+                    return deebo.methods.handlePageChange({skip: (dataTableService.methods.currPage-1), take: dataTableService.methods.rowsPerPage, topLevelFilter: document.getElementById("topLevelDataFilter").value, columnConfig: dataTableService.methods.getFilTrkerData(), sortOrder: [...dataTableService.methods.sortOrder]})
+                deebo.methods.renderCurrData(false)
+            },
+
+            setPageTracker: function(len) {
+                const ptr = document.getElementById("paginatorTracker");
+                const trs = document.getElementById("totalRows")
+                if(ptr && trs){
+                    const start = ((dataTableService.methods.currPage-1)*(Math.min(dataTableService.methods.rowsPerPage, dataTableService.methods.getTotal()))) + 1
+                    ptr.textContent = ("Rows " + start?.toLocaleString(undefined, { maximumFractionDigits: 0 }) + "-" + 
+                    Math.min(len, (start+(dataTableService.methods.rowsPerPage-1))).toLocaleString(undefined, { maximumFractionDigits: 0 }) );
+                    trs.textContent = dataTableService.methods.getTotal()?.toLocaleString(undefined, { maximumFractionDigits: 0 }) || 0
+                }
+            },
+            //REAL PAGINATOR
+
             initListenersAdded: false,
 
             initListeners: function() {
                 if(!deebo.methods.initListenersAdded){
-                    const tlFilt = document.getElementById("topLevelDataFilter")
-                    const btnReset = document.getElementById("btnReset")
-                    const skipTo = document.getElementById("skipTo")
-                    const fdrag = document.getElementById("fCellDragger")
-                    if(tlFilt){
-                        tlFilt.oninput = deebo.methods.filterOnKeyUp
-                        tlFilt.onkeyup = deebo.methods.filterOnKeyUp
-                    }
-                    if(btnReset)
-                        btnReset.addEventListener("click", deebo.methods.resetCurrentData)
-                    document.getElementById("btnXSelRows").addEventListener("click", deebo.methods.clearSelectedRows)
-                    document.getElementById("btnTogSelRows").addEventListener("click", deebo.methods.toggleSelectedRows)
-                    document.getElementById("btnExportCsv").addEventListener("click", deebo.methods.handleExportData)
-                    document.getElementById("btnExportPsv").addEventListener("click", deebo.methods.handleExportData)
-                    document.getElementById("btnExportTsv").addEventListener("click", deebo.methods.handleExportData)
-                    document.getElementById("btnExportJson").addEventListener("click", deebo.methods.handleExportData)
-                    if(fdrag){
-                        fdrag.addEventListener("focus", deebo.methods.focusCellDragger)
-                        fdrag.addEventListener("blur", deebo.methods.blurCellDragger)
-                        fdrag.addEventListener("keydown", deebo.methods.handleFDragTab)
-                        fdrag.addEventListener("mousedown", deebo.methods.focusCellDraggerFromMouseDown)
-                    }
-                    document.querySelector("#exportContain .deebo-dd-contain").addEventListener("click", deebo.methods.toggleExportOpts)
-                    window.addEventListener("resize", deebo.methods.cleanUpPieLayovers)
-                    window.addEventListener("resize", deebo.methods.clearValidatedEdit)
-                    window.addEventListener("scroll", deebo.methods.clearValidatedEdit)
-                    deebo.methods.initListenersAdded = true
-                    document.getElementsByClassName("btn-clear-grp")[0].addEventListener("click", deebo.methods.clearGrouping)
-                    if(skipTo){
-                        skipTo.oninput = deebo.methods.handleSkipToPageOnKeyup
-                        skipTo.onfocus = deebo.methods.showSkipToOptions
-                        skipTo.onclick = deebo.methods.showSkipToOptions
-                        skipTo.onblur = deebo.methods.handleSkipToPageOnKeyup
-                        skipTo.onkeyup = deebo.methods.handleSkipToPageOnKeyup
-                        deebo.methods.unbindMouseRemoveEvts(skipTo)
-                    }
+                    try{
+                        const tlFilt = document.getElementById("topLevelDataFilter")
+                        const btnReset = document.getElementById("btnReset")
+                        const skipTo = document.getElementById("skipTo")
+                        const fdrag = document.getElementById("fCellDragger")
+                        if(tlFilt){
+                            tlFilt.oninput = deebo.methods.filterOnKeyUp
+                            tlFilt.onkeyup = deebo.methods.filterOnKeyUp
+                        }
+                        if(btnReset)
+                            btnReset.addEventListener("click", deebo.methods.resetCurrentData)
+                        document.getElementById("btnXSelRows").addEventListener("click", deebo.methods.clearSelectedRows)
+                        document.getElementById("btnTogSelRows").addEventListener("click", deebo.methods.toggleSelectedRows)
+                        if(document.getElementById("btnExportCsv")){
+                            document.getElementById("btnExportCsv").addEventListener("click", deebo.methods.handleExportData)
+                            document.getElementById("btnExportPsv").addEventListener("click", deebo.methods.handleExportData)
+                            document.getElementById("btnExportTsv").addEventListener("click", deebo.methods.handleExportData)
+                            document.getElementById("btnExportJson").addEventListener("click", deebo.methods.handleExportData)
+                        }
+                        if(fdrag){
+                            fdrag.addEventListener("focus", deebo.methods.focusCellDragger)
+                            fdrag.addEventListener("blur", deebo.methods.blurCellDragger)
+                            fdrag.addEventListener("keydown", deebo.methods.handleFDragTab)
+                            fdrag.addEventListener("mousedown", deebo.methods.focusCellDraggerFromMouseDown)
+                        }
+                        const expCont = document.querySelector("#exportContain .deebo-dd-contain")
+                        if(expCont)
+                            expCont.addEventListener("click", deebo.methods.toggleExportOpts)
+                        window.addEventListener("resize", deebo.methods.cleanUpPieLayovers)
+                        window.addEventListener("resize", deebo.methods.clearValidatedEdit)
+                        window.addEventListener("scroll", deebo.methods.clearValidatedEdit)
+                        deebo.methods.initListenersAdded = true
+                        const grpLen = document.getElementsByClassName("btn-clear-grp").length
+                        if(grpLen)
+                            document.getElementsByClassName("btn-clear-grp")[0].addEventListener("click", deebo.methods.clearGrouping)
+                        if(skipTo){
+                            skipTo.oninput = deebo.methods.handleSkipToPageOnKeyup
+                            skipTo.onfocus = deebo.methods.showSkipToOptions
+                            skipTo.onclick = deebo.methods.showSkipToOptions
+                            skipTo.onblur = deebo.methods.handleSkipToPageOnKeyup
+                            skipTo.onkeyup = deebo.methods.handleSkipToPageOnKeyup
+                            deebo.methods.unbindMouseRemoveEvts(skipTo)
+                        }
+                        if(deebo.methods.paginate){
+                            if(document.getElementById("btnPageFirst")){
+                                document.getElementById("btnPageFirst").addEventListener("click", deebo.methods.handlePaginatorChange)
+                                document.getElementById("btnPageBack").addEventListener("click", deebo.methods.handlePaginatorChange)
+                                document.getElementById("btnPageForward").addEventListener("click", deebo.methods.handlePaginatorChange)
+                                document.getElementById("btnPageLast").addEventListener("click", deebo.methods.handlePaginatorChange)
+                            }
+                        }
+                    }catch(e){console.log(e)}
                 }
             },
         }
@@ -7466,6 +7759,10 @@ dataTableService.methods = function() {
             tblTop: 0,
             tblLeft: 0,
             tblRight: 0,
+            currPage: 1,
+            rowsPerPage: 25,
+            serverSideTotal: 0,
+            serverSideFilteredTotal: 0,
             firstCol: "",
             primaryKey: "",
             currMapping: {},
@@ -7524,6 +7821,24 @@ dataTableService.methods = function() {
                         colWidth: null,
                         colCellSymbol: symbol,
                     }
+            },
+
+            getFilTrkerData: function() {
+                let obj = {};
+                for(const prop in dataTableService.methods.dataFilSrtTracker){
+                    const trk = dataTableService.methods.dataFilSrtTracker[prop]
+                    if(trk.filter || trk.sort)
+                    obj[prop] = { filter: trk.filter, sort: trk.sort };
+                }
+                return obj;
+            },
+
+            getTotal: function() {
+                if(dataTableService.methods.serverSideFilteredTotal)
+                    return dataTableService.methods.serverSideFilteredTotal
+                if(dataTableService.methods.currFilData && dataTableService.methods.currFilData.length !== dataTableService.methods.mainData.length)
+                    return dataTableService.methods.currFilData.length || dataTableService.methods.serverSideTotal;
+                return dataTableService.methods.serverSideTotal || dataTableService.methods.currFilData?.length || 0;
             },
 
             setTblVertBounds: function() {
