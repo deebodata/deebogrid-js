@@ -7,9 +7,14 @@
     </div>
     <script src="./deebo-js-grid-enterprise.js"></script>
     <script>
-        deebo.methods.setInitApiUrl("https://d2ffvluimla00s.cloudfront.net/stim_imgs_comm.json")
-        deebo.methods.setThemeColors("white", "red")
-        // deebo.methods.setAltRows("#f5f3f3")
+        deebo.methods.setInitMethod("GET")//sets http method
+        deebo.methods.setInitResProp("result")//sets property in response with the array
+        deebo.methods.setInitApiUrl("https://d2ffvluimla00s.cloudfront.net/stim_imgs_comm.json")//api url
+        deebo.methods.initDeeboData("LICENSE KEY")//leave 2nd arg undefined so deebodata loads from your api
+    </script>
+</body>
+
+<!-- // deebo.methods.setAltRows("#f5f3f3")
         deebo.methods.setColumnStyles(
         [
             { 
@@ -37,63 +42,4 @@
                         { value: "female", color: "#FFC0CB" },
                     ]
                 }
-        ])
-
-        function setCustomSortObj() {
-            const field = "category";
-            let obj = {
-            asc: {
-                category: (a, b) => {
-                if(!a[field] && a[field] !== 0)
-                    return 1
-                if(!b[field] && b[field] !== 0)
-                    return -1
-                if(a[field] > b[field])
-                    return 1
-                if((a[field] === b[field]) || (JSON.stringify(a[field]) === JSON.stringify(b[field])))
-                    return 0
-                return -1
-                }
-            },
-            desc: {
-                category: (a, b) => {
-                if(!a[field] && a[field] !== 0)
-                    return 1
-                if(!b[field] && b[field] !== 0)
-                    return -1
-                if(a[field] > b[field])
-                    return -1
-                if((a[field] === b[field]) || (JSON.stringify(a[field]) === JSON.stringify(b[field])))
-                    return 0
-                return 1
-                }
-            },
-            }
-            deebo.methods.setColumnSort(obj);
-        }
-
-        setCustomSortObj()
-        deebo.methods.setPagination(true)
-        // deebo.methods.setServerSideTotal(50000)
-        deebo.methods.setRowsPerPage(100.5)
-
-        deebo.methods.setPieUncovered(["party"])
-        deebo.methods.initDeeboData()
-
-        function dataFiltered(data) {
-            console.log(data)
-        }
-
-        function pageChange(event) {
-            console.log(event)
-            deebo.methods.setPageLoadMessage("Loading page " + (event.skip+1) + "...")
-            deebo.methods.setLoading(deebo.methods.pageLoadMessage)
-            setTimeout( function() {
-                console.log(myData.slice(event.skip*event.take, ((event.skip*event.take) + event.take)))
-                deebo.methods.initializeLocalData([...myData].slice(event.skip*event.take, ((event.skip*event.take) + event.take)))
-            }, 2500)
-        }
-
-        var myData = []
-    </script>
-</body>
+        ]) -->

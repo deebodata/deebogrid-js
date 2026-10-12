@@ -59,8 +59,8 @@ deebo.methods = function() {
             setCellEditScrlActionTO: null,
             badStrings: ["null", "NULL", "Null", "undefined", "UNDEFINED", "Undefined"],
             statOpts: ["avg", "min", "max", "mode", "median", "sum"],
-            themeColor1: "#000035",
-            themeColor2: "#e9e9e9",
+            themeColor1: "",
+            themeColor2: "",
             altRowColor: "",
             numDistLim: 5000,
             initJSONProp: "result",
@@ -3641,6 +3641,7 @@ deebo.methods = function() {
                     }
                 }
                 setTimeout( function() { 
+                    dataTableService.methods.setTblVertBounds()
                     deebo.methods.setTblScrollListeners(true); 
                     if(deebo.methods.rowNumbers)
                         deebo.methods.setRowNumbers(); 
@@ -8395,6 +8396,7 @@ tblDragEvents.methods = function() {
                     const useHgt= e.pageY - (hdrbds.top+window.scrollY)
                     tblDragEvents.methods.colDragStartFrmHeaderTracker.resized = true
                     deebo.methods.setSingleRowHgt(Math.floor(Math.max(30, useHgt)), document.getElementById("dataTableHeaders"), true)
+                    setTimeout( function() { dataTableService.methods.setTblVertBounds() })
                 }catch(err){}
             },
 
