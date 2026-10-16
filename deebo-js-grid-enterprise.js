@@ -7740,6 +7740,15 @@ deebo.methods = function() {
                     }catch(e){console.log(e)}
                 }
             },
+
+            logExpiry: function(expires) {
+                try{
+                    const oneDay = 1000*60*60*24;
+                    const msg = "Your license key expires in ";
+                    const diff = Math.floor((new Date(expires).getTime() - Date.now())/oneDay)
+                    console.log(msg + diff + " days.")
+                } catch(e) {}
+            },
         }
 
         return home
@@ -8613,7 +8622,7 @@ tblDragEvents.methods = function() {
         return home
     }()
 }()
-license.methods=function(){var t={};return{isValidKey:!1,validateLicense:function(t,i){var e=new XMLHttpRequest;e.onreadystatechange=function(){if(4===e.readyState)try{200===e.status&&(license.methods.isValidKey=!0),i()}catch(t){i()}},e.open("POST",deebo.methods.validationEndpoint,!0),e.setRequestHeader("Content-Type", "application/json"),e.send(JSON.stringify({key:t})),deebo.methods.setLoading("Initializing grid...")}}}();
+license.methods=function(){var t={};return{isValidKey:!1,validateLicense:function(t,i){var e=new XMLHttpRequest;e.onreadystatechange=function(){if(4===e.readyState)try{200===e.status&&(license.methods.isValidKey=!0),i();deebo.methods.logExpiry(JSON.parse(e.responseText)["response"])}catch(t){i()}},e.open("POST",deebo.methods.validationEndpoint,!0),e.setRequestHeader("Content-Type", "application/json"),e.send(JSON.stringify({key:t})),deebo.methods.setLoading("Initializing grid...")}}}();
 
 groupBy.methods = function() {
 
