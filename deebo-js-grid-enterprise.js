@@ -2888,14 +2888,17 @@ deebo.methods = function() {
                     deebo.methods.cleanRowChecks()
                     if(deebo.methods.listenToCellDraggerMouseMove)
                         deebo.methods.settleCellDragger()
-                    if(!deebo.methods.paginate)
-                        setTimeout(deebo.methods.cleanUpPossibles, 0)
+                    if(!deebo.methods.paginate){
+                        setTimeout( function() {
+                            deebo.methods.cleanUpPossibles()
+                            if(deebo.methods.cleanAbvTO)
+                                clearTimeout(deebo.methods.cleanAbvTO)
+                            deebo.methods.cleanAbvTO = setTimeout(deebo.methods.cleanAbove, 5)
+                        }, 0)
+                    }
                     setTimeout(deebo.methods.setRowSelChecksPlacement, 0)
                     setTimeout(deebo.methods.blockEventsInCells, 100)
                 }, 0)
-                if(deebo.methods.cleanAbvTO)
-                    clearTimeout(deebo.methods.cleanAbvTO)
-                deebo.methods.cleanAbvTO = setTimeout(deebo.methods.cleanAbove, 5)
             },
 
             shouldValidateEdit: function(col, filInp) {
@@ -9088,11 +9091,13 @@ groupBy.methods = function() {
                 setTimeout( function() { 
                     groupBy.methods.setColsOnVisScreen()
                     groupBy.methods.setRowNumPlacement(groupValue)
-                    setTimeout( function() { groupBy.methods.cleanUpPossibles(groupValue) })
+                    setTimeout( function() { 
+                        groupBy.methods.cleanUpPossibles(groupValue) 
+                        if(groupBy.methods.cleanAbvTO)
+                            clearTimeout(groupBy.methods.cleanAbvTO)
+                        groupBy.methods.cleanAbvTO = setTimeout( function() {groupBy.methods.cleanAbove(groupValue)}, 5)
+                    })
                 })
-                if(groupBy.methods.cleanAbvTO)
-                    clearTimeout(groupBy.methods.cleanAbvTO)
-                groupBy.methods.cleanAbvTO = setTimeout( function() {groupBy.methods.cleanAbove(groupValue)}, 5)
             },
 
             cleanAbvTO: null,
