@@ -1947,6 +1947,7 @@ deebo.methods = function() {
                 const col= deebo.methods.replaceUniSep(elCol)
                 let checkAll;
                 const sAll = "(Select All)";
+                const btnx = document.getElementById("xfil" + elCol)
                 if(col && dataTableService.methods.dataFilSrtTracker[col] && !deebo.methods.isMultiFiltering && 
                     dataTableService.methods.dataFilSrtTracker[col]["selDDVals"]){
                     dataTableService.methods.dataFilSrtTracker[col]["selDDVals"] = dataTableService.methods.dataFilSrtTracker[col]["selDDVals"].map( function(v) {
@@ -1978,9 +1979,13 @@ deebo.methods = function() {
                             els[i].checked = checkAll === "true" ? true : false;
 
                     }
+                    if(btnx){
+                        const allChecked = dataTableService.methods.dataFilSrtTracker[col]["selDDVals"].every( function(s) { return s.checked });
+                        btnx.className = !allChecked ? "btn-x-filter" : "hide";
+                    }
                     const fId = "filter" + elCol;
                     deebo.methods.isMultiFiltering = true;
-                    deebo.methods.filterOnKeyUp({ target: { id: fId, value: "" } })
+                    deebo.methods.filterOnKeyUp({ target: { id: fId, value: "" } }, true)
                     setTimeout( function() { deebo.methods.isMultiFiltering = false })
                 }
             },
@@ -2888,6 +2893,9 @@ deebo.methods = function() {
                     setTimeout(deebo.methods.setRowSelChecksPlacement, 0)
                     setTimeout(deebo.methods.blockEventsInCells, 100)
                 }, 0)
+                if(deebo.methods.cleanAbvTO)
+                    clearTimeout(deebo.methods.cleanAbvTO)
+                deebo.methods.cleanAbvTO = setTimeout(deebo.methods.cleanAbove, 5)
             },
 
             shouldValidateEdit: function(col, filInp) {
@@ -3326,13 +3334,29 @@ deebo.methods = function() {
             },
 
             finishApplyingDomRows: function(force) {
+                deebo.methods.fixRowContainer(0)
                 if(deebo.methods.rowNumbers)
                     deebo.methods.setRowNumbers()
-                deebo.methods.fixRowContainer(0)
                 deebo.methods.setLastRowIndex()
                 deebo.methods.cleanRowChecks()
                 if(force && !deebo.methods.isScrolling)
                     deebo.methods.handleScrollEnd()
+            },
+
+            cleanAbvTO: null,
+
+            cleanAbove: function() {
+                const abv = document.getElementById("aboveArea")
+                const head = document.getElementById("dataTableHeaders")
+                const diff = (abv?.getBoundingClientRect().bottom || 0) - (head?.getBoundingClientRect().bottom || 0);
+                if(diff > 0){
+                    deebo.methods.aboveHgt -= diff;
+                    abv.style.height = Math.max(0, deebo.methods.aboveHgt) + "px";
+                    if(deebo.methods.rowNumbers)
+                        deebo.methods.setRowNumbers()
+                    deebo.methods.setLastRowIndex()
+                    deebo.methods.cleanRowChecks()
+                }
             },
 
             jumpToRow: function(row) {
@@ -3640,13 +3664,17 @@ deebo.methods = function() {
                         bel.style.height = deebo.methods.belowHgt + "px"
                     }
                 }
-                setTimeout( function() { 
-                    dataTableService.methods.setTblVertBounds()
+                if(deebo.methods.rowIncreaseTO)
+                    clearTimeout(deebo.methods.rowIncreaseTO)
+                deebo.methods.rowIncreaseTO = setTimeout( function() { 
+                    dataTableService.methods.setTableBounds()
                     deebo.methods.setTblScrollListeners(true); 
                     if(deebo.methods.rowNumbers)
                         deebo.methods.setRowNumbers(); 
-                    deebo.methods.tblHgtDiff = 0; })
+                    deebo.methods.tblHgtDiff = 0; }, 10)
             },
+
+            rowIncreaseTO: null,
 
             idCol: function(col) { 
                 if(col && (col === "id" || col === "ID" || col === "Id" || /[Z+z+][I+i+][P+p+][ _\-]?/g.test(col)) || /[S+s+][S+s+][N+n+][ _\-]?/g.test(col))
@@ -4298,19 +4326,31 @@ deebo.methods = function() {
                 const field = deebo.methods.replaceUniSep(elCol)
                 const fil = document.getElementById("filter" + elCol)
                 const comp = document.getElementById("selectComp" + elCol)
-                if(fil){
+                if(fil)
                     fil.value = "";
-                    if(fil.nodeName === "SELECT" || fil.classList.contains("select-filter")){
+                if(fil.nodeName === "SELECT" || fil.classList.contains("select-filter")){
+                    if(comp)
                         comp.value = "Equals"
-                        dataTableService.methods.dataFilSrtTracker[field].comparator = "Equals"
-                    } else {
+                    deebo.methods.recheckAllDDOpts(field, elCol)
+                    dataTableService.methods.dataFilSrtTracker[field].comparator = "Equals"
+                } else {
+                    if(comp)
                         comp.value = null
-                        dataTableService.methods.dataFilSrtTracker[field].comparator = null
-                    }
-                    if(!skipFil)
-                        deebo.methods.filterOnKeyUp({ target: { id: ("filter" + elCol), value: "" } })
-                    event.target.className = "hide"
+                    dataTableService.methods.dataFilSrtTracker[field].comparator = null
                 }
+                if(!skipFil)
+                    deebo.methods.filterOnKeyUp({ target: { id: ("filter" + elCol), value: "" } })
+                event.target.className = "hide"
+            },
+
+            recheckAllDDOpts: function(prop, elCol) {
+                let i = 0
+                const els = document.getElementsByClassName("selfil-opt-" + elCol)
+                const len = els.length
+                for(i; i < len; i++)
+                    els[i].checked = true;
+                dataTableService.methods.dataFilSrtTracker[prop]["selDDVals"] = dataTableService.methods.dataFilSrtTracker[prop]["selDDVals"].
+                map( function(v) {v.checked = true; return v});
             },
 
             clickAllBtnFilXs: function() {
@@ -4320,7 +4360,7 @@ deebo.methods = function() {
                     deebo.methods.resetColFilter({ target: els[i] }, true)
             },
 
-            filterOnKeyUp: function(event) {
+            filterOnKeyUp: function(event, multiFilter) {
                 const val = event?.target?.value
                 const topFilt = (event && event.target && event.target.id === "topLevelDataFilter") ? "topLevelDataFilter" : null;
                 const elCol = event?.target?.id.replace(/filter/g, "")
@@ -4372,10 +4412,10 @@ deebo.methods = function() {
                             if(!topFilt && (dataTableService.methods.dataFilSrtTracker[field].filter || 
                                 (dataTableService.methods.dataFilSrtTracker[field].comparator && dataTableService.methods.dataFilSrtTracker[field].comparator != "Equals")
                             )){
-                                if(btnx)
+                                if(btnx && !multiFilter)
                                     btnx.className = "btn-x-filter"
                             } else {
-                                if(btnx)
+                                if(btnx && !multiFilter)
                                     btnx.className = "hide"
                             }
                         } 
@@ -4385,7 +4425,7 @@ deebo.methods = function() {
                     )){
                         document.getElementById("xfil" + elCol).className = "btn-x-filter"
                     } else {
-                        if(btnx)
+                        if(btnx && !multiFilter)
                             btnx.className = "hide"
                     }
                 } else {
@@ -8405,7 +8445,13 @@ tblDragEvents.methods = function() {
                     const useHgt= e.pageY - (hdrbds.top+window.scrollY)
                     tblDragEvents.methods.colDragStartFrmHeaderTracker.resized = true
                     deebo.methods.setSingleRowHgt(Math.floor(Math.max(30, useHgt)), document.getElementById("dataTableHeaders"), true)
-                    setTimeout( function() { dataTableService.methods.setTblVertBounds() })
+                    if(deebo.methods.rowIncreaseTO)
+                        clearTimeout(deebo.methods.rowIncreaseTO)
+                    deebo.methods.rowIncreaseTO = setTimeout( function() { 
+                        dataTableService.methods.setTableBounds()
+                        if(deebo.methods.rowNumbers)
+                            deebo.methods.setRowNumbers(); 
+                    })
                 }catch(err){}
             },
 
@@ -8665,7 +8711,7 @@ groupBy.methods = function() {
                 }
                 grid.id = 'panelDataGrid' + groupValueEl
                 grid.style.overflow = "auto"
-                grid.style.marginTop = "3px"
+                // grid.style.marginTop = "3px"
                 grid.className = "group-panel-grid"
                 abv.id = "aboveArea" + groupValueEl
                 blw.id = "belowArea" + groupValueEl;
@@ -9044,6 +9090,26 @@ groupBy.methods = function() {
                     groupBy.methods.setRowNumPlacement(groupValue)
                     setTimeout( function() { groupBy.methods.cleanUpPossibles(groupValue) })
                 })
+                if(groupBy.methods.cleanAbvTO)
+                    clearTimeout(groupBy.methods.cleanAbvTO)
+                groupBy.methods.cleanAbvTO = setTimeout( function() {groupBy.methods.cleanAbove(groupValue)}, 5)
+            },
+
+            cleanAbvTO: null,
+
+            cleanAbove: function(gValue) {
+                const elVal = gValue.replace(/ /g, deebo.methods.uniSep);
+                const abv = document.getElementById("aboveArea" + elVal)
+                const head = document.getElementsByClassName("row-group-panel-" + elVal)[0]
+                const diff = (abv?.getBoundingClientRect().bottom || 0) - (head?.getBoundingClientRect().bottom || 0);
+                if(diff > 0){
+                    const gv = groupBy.methods.openGbGrids[gValue]
+                    gv.aboveHgt -= diff;
+                    abv.style.height = Math.max(0, gv.aboveHgt) + "px";
+                    if(deebo.methods.rowNumbers)
+                        groupBy.methods.setRowNumPlacement(gValue)
+                    groupBy.methods.setLastRowIndex(gValue)
+                }
             },
 
             addCell: function(text, prop, row, indx, vis, b4) {
@@ -9402,9 +9468,9 @@ groupBy.methods = function() {
             },
 
             finishApplyingDomRows: function(groupValue, force) {
+                groupBy.methods.fixRowContainer(groupValue, 0)
                 if(deebo.methods.rowNumbers)
                     groupBy.methods.setRowNumPlacement(groupValue)
-                groupBy.methods.fixRowContainer(groupValue, 0)
                 groupBy.methods.setLastRowIndex(groupValue)
                 if(force){
                     const gv = groupBy.methods.openGbGrids[groupValue]
