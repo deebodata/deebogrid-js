@@ -3293,7 +3293,7 @@ deebo.methods = function() {
                     let bhToAdd = 0
                     let ahToSub = 0
                     const doRows = force || (!deebo.methods.isScrolling && (gap == 0 || !deebo.methods.mouseIsDown)) || currTop%deebo.methods.doRowsMod === 0;
-                    const rowsInGap = Math.floor(gap/defNum)
+                    const rowsInGap = Math.ceil(gap/defNum)
                     const min = Math.max(0, (z-rowsInGap))
                     for(z; z >= min; z--){
                         const wldBeElBot = rbot - (defNum*h);
@@ -9427,7 +9427,7 @@ groupBy.methods = function() {
                     let bhToAdd = 0
                     let ahToSub = 0
                     const doRows = force || (!gv.isScrolling && (gap == 0 || !deebo.methods.mouseIsDown)) || currTop%deebo.methods.doRowsMod === 0;
-                    const rowsInGap = Math.floor(gap/defNum)
+                    const rowsInGap = Math.ceil(gap/defNum)
                     const min = Math.max(0, (z-rowsInGap))
                     for(z; z >= min; z--){
                         const wldBeElBot = rbot - (defNum*h);
