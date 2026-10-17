@@ -3334,9 +3334,9 @@ deebo.methods = function() {
             },
 
             finishApplyingDomRows: function(force) {
-                deebo.methods.fixRowContainer(0)
                 if(deebo.methods.rowNumbers)
                     deebo.methods.setRowNumbers()
+                deebo.methods.fixRowContainer(0)
                 deebo.methods.setLastRowIndex()
                 deebo.methods.cleanRowChecks()
                 if(force && !deebo.methods.isScrolling)
@@ -9468,9 +9468,9 @@ groupBy.methods = function() {
             },
 
             finishApplyingDomRows: function(groupValue, force) {
-                groupBy.methods.fixRowContainer(groupValue, 0)
                 if(deebo.methods.rowNumbers)
                     groupBy.methods.setRowNumPlacement(groupValue)
+                groupBy.methods.fixRowContainer(groupValue, 0)
                 groupBy.methods.setLastRowIndex(groupValue)
                 if(force){
                     const gv = groupBy.methods.openGbGrids[groupValue]
