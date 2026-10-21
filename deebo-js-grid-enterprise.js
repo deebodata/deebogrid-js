@@ -3337,9 +3337,8 @@ deebo.methods = function() {
             },
 
             finishApplyingDomRows: function(force) {
-                if(deebo.methods.rowNumbers)
-                    deebo.methods.setRowNumbers()
                 deebo.methods.fixRowContainer(0)
+                deebo.methods.setRowSelChecksPlacement()
                 deebo.methods.setLastRowIndex()
                 deebo.methods.cleanRowChecks()
                 if(force && !deebo.methods.isScrolling)
@@ -3355,8 +3354,7 @@ deebo.methods = function() {
                 if(diff > 0){
                     deebo.methods.aboveHgt -= diff;
                     abv.style.height = Math.max(0, deebo.methods.aboveHgt) + "px";
-                    if(deebo.methods.rowNumbers)
-                        deebo.methods.setRowNumbers()
+                    deebo.methods.setRowSelChecksPlacement()
                     deebo.methods.setLastRowIndex()
                     deebo.methods.cleanRowChecks()
                 }
@@ -3671,9 +3669,8 @@ deebo.methods = function() {
                     clearTimeout(deebo.methods.rowIncreaseTO)
                 deebo.methods.rowIncreaseTO = setTimeout( function() { 
                     dataTableService.methods.setTableBounds()
-                    deebo.methods.setTblScrollListeners(true); 
-                    if(deebo.methods.rowNumbers)
-                        deebo.methods.setRowNumbers(); 
+                    deebo.methods.setTblScrollListeners(true);
+                    deebo.methods.setRowSelChecksPlacement(); 
                     deebo.methods.tblHgtDiff = 0; }, 10)
             },
 
@@ -7786,10 +7783,12 @@ deebo.methods = function() {
 
             logExpiry: function(expires) {
                 try{
-                    const oneDay = 1000*60*60*24;
-                    const msg = "Your license key expires in ";
-                    const diff = Math.floor((new Date(expires).getTime() - Date.now())/oneDay)
-                    console.log(msg + diff + " days.")
+                    if(expires){
+                        const oneDay = 1000*60*60*24;
+                        const msg = "Your license key expires in ";
+                        const diff = Math.floor((new Date(expires).getTime() - Date.now())/oneDay)
+                        console.log(msg + diff + " days.")
+                    }
                 } catch(e) {}
             },
         }
