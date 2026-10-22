@@ -3366,7 +3366,6 @@ deebo.methods = function() {
                     const ind = row - 1
                     tbl.scrollTop = ind*dataTableService.methods.defltRHgtNum
                     deebo.methods.execVertScroll(tbl.scrollTop)
-                    setTimeout( function() { deebo.methods.setRowSelChecksPlacement() })
                 }
             },
 
