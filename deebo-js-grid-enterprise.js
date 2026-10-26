@@ -3365,7 +3365,7 @@ deebo.methods = function() {
                 if(tbl){
                     const ind = row - 1
                     tbl.scrollTop = ind*dataTableService.methods.defltRHgtNum
-                    deebo.methods.execVertScroll(tbl.scrollTop)
+                    setTimeout( () => deebo.methods.execVertScroll(tbl.scrollTop))
                 }
             },
 
