@@ -1,5 +1,8 @@
 /*
-By entering into this agreement with Cedar Technologies LLC, you're agreeing that you will obtain 1 deployment license PER DEVELOPER, PER PROJECT. 1 deployment license covers all of the project's environments e.g. (DEV, UAT, & PROD). The deployment license key will work for 365 days after purchase. Unless you opt out, the licensor - Cedar Technologies LLC, is responsible for bug fixes & adequate support for 1 Yr. upon purchase.
+By entering into this agreement with Cedar Technologies LLC, you're agreeing that you will obtain 1 deployment license 
+PER DEVELOPER, PER PROJECT. 1 deployment license covers all of the project's environments e.g. (DEV, UAT, & PROD). The 
+deployment license key will work for 365 days after purchase. Unless you opt out, the licensor - Cedar Technologies LLC, 
+is responsible for bug fixes & adequate support for 1 Yr. upon purchase.
 */
 var deebo = {}
 var tblDragEvents = {}
