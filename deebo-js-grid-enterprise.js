@@ -1,9 +1,5 @@
 /*
-EULA: By entering into this agreement with Cedar Technologies LLC, you agree that upon obtaining 1 license PER DEVELOPER, PER APPLICATION, 
-and once the javascript file has been downloaded to your local computer, you will not share or distribute the proprietary software using 
-content delivery networks, public git repositories, or npm. You agree to refrain from attempting to subvert the license key. You may 
-reference the downloaded file locally and on your website's hosting server(s). Unless you opt out, the licensor - Cedar Technologies LLC, 
-is responsible for bug fixes & adequate support for 1 Yr. upon purchase. Your license key will be shown on screen once after payment.
+By entering into this agreement with Cedar Technologies LLC, you're agreeing that you will obtain 1 deployment license PER DEVELOPER, PER PROJECT. 1 deployment license covers all of the project's environments e.g. (DEV, UAT, & PROD). The deployment license key will work for 365 days after purchase. Unless you opt out, the licensor - Cedar Technologies LLC, is responsible for bug fixes & adequate support for 1 Yr. upon purchase.
 */
 var deebo = {}
 var tblDragEvents = {}
