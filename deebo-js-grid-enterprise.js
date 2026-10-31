@@ -64,6 +64,13 @@ deebo.methods = function() {
             numDistLim: 5000,
             initJSONProp: "result",
             initApiMethod: "GET",
+            disableOmniFilter: false,
+            disableCharts: false,
+            disableGroupBy: false,
+            disableExport: false,
+            // disableRowSelection: false,
+            hideJumpTo: false,
+            hideColumnFilters: false,
             initApiEndpoint: "https://d2ffvluimla00s.cloudfront.net/senators.json",
             localDataSet: [ { name: "Dave", salary: 200000, title: "CEO" }, {name: "Amy", salary: 164000, title: "CIO" }, 
                 {name: "Ted", salary: 60000, title: "QA Engineer" }, {name: "Sarah", salary: 95000, title: "Engineer" }, 
@@ -206,6 +213,34 @@ deebo.methods = function() {
                     deebo.methods.numDistLim = limit
             },
 
+            setOmniFilterDisabled: function() {
+                deebo.methods.disableOmniFilter = true;
+            },
+
+            setChartsDisabled: function() {
+                deebo.methods.disableCharts = true;
+            },
+
+            setGroupByDisabled: function() {
+                deebo.methods.disableGroupBy = true;
+            },
+
+            setExportDisabled: function() {
+                deebo.methods.disableExport = true;
+            },
+
+            // setRowSelectionDisabled: function() {
+            //     deebo.methods.disableRowSelection = true;
+            // },
+
+            setJumpToHidden: function() {
+                deebo.methods.hideJumpTo = true;
+            },
+
+            setColumnFiltersHidden: function() {
+                deebo.methods.hideColumnFilters = true;
+            },
+
             setPagination: function(pagi) {
                 if(typeof pagi === "boolean"){
                     deebo.methods.paginate = pagi;
@@ -343,7 +378,9 @@ deebo.methods = function() {
                     document.getElementById("dataTable").className = "data-table"
                 }
                 deebo.methods.setupRowGroupPanels()
-                document.getElementById("skipTo").value = ""
+                const skTo = document.getElementById("skipTo");
+                if(skTo)
+                    skTo.value = ""
                 window.addEventListener("mouseup", groupBy.methods.handleScrlBarDrag)
             },
 
@@ -1066,7 +1103,7 @@ deebo.methods = function() {
                 sxg.className += " v-mid"
                 sxg.textContent = " Grouping"
                 //<i class="material-icons error-message heavy v-mid" aria-hidden="false">close</i>&nbsp;<span class="md-text v-mid">Grouping</span>
-                if(noCharts){
+                if(noCharts && !deebo.methods.disableCharts){
                     btnCharts.type = "button"
                     btnCharts.id = "btnCharts"
                     btnCharts.className = "no-btn"
@@ -1094,16 +1131,17 @@ deebo.methods = function() {
                 sTog.textContent = " Selected Rows"
                 btnXg.appendChild(ixg)
                 btnXg.appendChild(sxg)
-                if(noCharts){
+                if(noCharts && !deebo.methods.disableCharts){
                     btnCharts.appendChild(iChart)
                     btnCharts.appendChild(sChart)
                 }
                 btnTog.appendChild(iTog)
                 btnTog.appendChild(sTog)
                 controls.className = "controls"
-                controls.appendChild(inp)
+                if(!deebo.methods.disableOmniFilter)
+                    controls.appendChild(inp)
                 controls.appendChild(btnXg)
-                if(noCharts)
+                if(noCharts && !deebo.methods.disableCharts)
                     controls.appendChild(btnCharts)
                 controls.appendChild(btnX)
                 controls.appendChild(btnTog)
@@ -1228,10 +1266,12 @@ deebo.methods = function() {
                 sInp.placeholder = "Jump to..."
                 sOptC.id = "skipToOptions"
                 sOptC.className = "skip-to-options-hide"
-                sdiv.appendChild(sInp)
-                sdiv.appendChild(sOptC)
-                pagiQ.appendChild(sLbl)
-                pagiQ.appendChild(sdiv)
+                if(!deebo.methods.hideJumpTo){
+                    sdiv.appendChild(sInp)
+                    sdiv.appendChild(sOptC)
+                    pagiQ.appendChild(sLbl)
+                    pagiQ.appendChild(sdiv)
+                }
                 pagi.appendChild(pagiT)
                 pagi.appendChild(pagiQ)
                 foot.appendChild(pagi)
@@ -1383,9 +1423,10 @@ deebo.methods = function() {
                 exBtn.appendChild(exI)
                 exLbl.appendChild(exBtn)
                 exCont.appendChild(exLbl)
-                if(!deebo.methods.paginate)
+                if(!deebo.methods.paginate && !deebo.methods.disableGroupBy)
                     cont.appendChild(canGb)
-                cont.appendChild(exCont)
+                if(!deebo.methods.disableExport)
+                    cont.appendChild(exCont)
                 return cont;
             },
 
@@ -1598,7 +1639,9 @@ deebo.methods = function() {
                         deebo.methods.setLastRowIndex()
                     deebo.methods.blockEventsInCells()
                     deebo.methods.toggleNonInitCtrlBtns(true)
-                    document.getElementById("tableFooter").className = "data-table-footer"
+                    const tbF = document.getElementById("tableFooter")
+                    if(tbF)
+                        tbF.className = "data-table-footer"
                     deebo.methods.setUpPaginatorOnTblLoad()
                     if(deebo.methods.paginate)
                         deebo.methods.setPagi(1)
@@ -1620,8 +1663,9 @@ deebo.methods = function() {
                         window.addEventListener("mouseup", deebo.methods.handleScrlBarDrag)
                     window.addEventListener("click", deebo.methods.testEditDDs)
                     window.addEventListener("click", deebo.methods.handleSkipToWinClick)
-                    if(!deebo.methods.paginate)
-                        document.getElementById("skipTo").setAttribute("max", len.toString())
+                    const skTo = document.getElementById("skipTo");
+                    if(!deebo.methods.paginate && skTo)
+                        skTo.setAttribute("max", len.toString())
                     deebo.methods.handleSkipToDD(len)
                     deebo.methods.handleTheme(color1, color2)
                     if(len >= 500000)
@@ -1749,27 +1793,28 @@ deebo.methods = function() {
                     filInp.setAttribute("autocomplete", "off")
                     filInp.removeEventListener("focus", deebo.methods.killSelFilOpts)
                     filInp.addEventListener("focus", deebo.methods.buildSelFilOptions)
-                    const comp = document.getElementById("selectComp" + elId)
-                    let o = 0; let i = 0;
-                    vals = vals?.sort()
-                    const oLen = vals?.length
-                    dataTableService.methods.dataFilSrtTracker[col]["selDDVals"] = []
-                    dataTableService.methods.dataFilSrtTracker[col]["selDDVals"].push({ value: "(Select All)", checked: true })
-                    for(o; o < oLen; o++)
-                        dataTableService.methods.dataFilSrtTracker[col]["selDDVals"].push({ value: vals[o], checked: true })
-                    if(comp){
-                        comp.value = "Equals"
-                        dataTableService.methods.dataFilSrtTracker[col].comparator = "Equals"
-                    }
-                    const cLen = comp.options?.length
-                    const canComp = ["Equals", "Not Equal", "Empty", "Not Empty",]
-                    for(i; i < cLen; i++){
-                        const opt = comp.options[i]
-                        if(opt && opt.value && canComp.indexOf(opt.value) < 0)
-                            opt.disabled = true
-                    }
-                    deebo.methods.canGroupBy.push(col)
                 }
+                const comp = document.getElementById("selectComp" + elId)
+                let o = 0; let i = 0;
+                vals = vals?.sort()
+                const oLen = vals?.length
+                dataTableService.methods.dataFilSrtTracker[col]["selDDVals"] = []
+                dataTableService.methods.dataFilSrtTracker[col]["selDDVals"].push({ value: "(Select All)", checked: true })
+                for(o; o < oLen; o++)
+                    dataTableService.methods.dataFilSrtTracker[col]["selDDVals"].push({ value: vals[o], checked: true })
+                if(comp){
+                    comp.value = "Equals"
+                    dataTableService.methods.dataFilSrtTracker[col].comparator = "Equals"
+                }
+                const cLen = comp?.options?.length
+                const canComp = ["Equals", "Not Equal", "Empty", "Not Empty",]
+                for(i; i < cLen; i++){
+                    const opt = comp.options[i]
+                    if(opt && opt.value && canComp.indexOf(opt.value) < 0)
+                        opt.disabled = true
+                }
+                if(dataTableService.methods.dataFilSrtTracker[col]["selDDVals"].length)
+                    deebo.methods.canGroupBy.push(col)
             },
 
             //GROUPBY
@@ -3364,7 +3409,7 @@ deebo.methods = function() {
                 if(tbl){
                     const ind = row - 1
                     tbl.scrollTop = ind*dataTableService.methods.defltRHgtNum
-                    setTimeout( () => deebo.methods.execVertScroll(tbl.scrollTop))
+                    deebo.methods.execVertScroll(tbl.scrollTop)
                 }
             },
 
@@ -3444,21 +3489,23 @@ deebo.methods = function() {
                     xfil.innerHTML = "&times;";
                     xfil.onclick = deebo.methods.resetColFilter
                     const inputType = deebo.methods.figureFilterType(col)
-                    inp.type= inputType
-                    inp.name = "filter" + useCol
-                    inp.id = "filter" + useCol//dont chhange
-                    if(inputType === "text" || inputType === "number"){
-                        inp.onkeyup = deebo.methods.filterOnKeyUp
-                        inp.oninput = deebo.methods.filterOnKeyUp
-                        if(inputType === "text")
-                            inp.maxLength = 255
+                    if(!deebo.methods.hideColumnFilters){
+                        inp.type= inputType
+                        inp.name = "filter" + useCol
+                        inp.id = "filter" + useCol//dont chhange
+                        if(inputType === "text" || inputType === "number"){
+                            inp.onkeyup = deebo.methods.filterOnKeyUp
+                            inp.oninput = deebo.methods.filterOnKeyUp
+                            if(inputType === "text")
+                                inp.maxLength = 255
+                        }
+                        if(inputType === "date"){
+                            inp.oninput = deebo.methods.filterOnKeyUp
+                            inp.onchange = deebo.methods.filterOnKeyUp
+                        }
+                        inp.onclick = function(e) { e && e.stopPropagation() }
+                        inp.addEventListener("focus", deebo.methods.killSelFilOpts)
                     }
-                    if(inputType === "date"){
-                        inp.oninput = deebo.methods.filterOnKeyUp
-                        inp.onchange = deebo.methods.filterOnKeyUp
-                    }
-                    inp.onclick = function(e) { e && e.stopPropagation() }
-                    inp.addEventListener("focus", deebo.methods.killSelFilOpts)
                     div.appendChild(name)//keep first
                     div.appendChild(arr)
                     if(okEnt)
@@ -3478,9 +3525,12 @@ deebo.methods = function() {
                     }
                     div.appendChild(document.createElement("br"))
                     div.appendChild(xfil)
-                    div.appendChild(inp)
-                    div.appendChild(deebo.methods.insertSelectComparator(useCol, inputType))
-                    div.appendChild(deebo.methods.insertSelectComparatorBtn())
+                    if(inp && !deebo.methods.hideColumnFilters)
+                        div.appendChild(inp)
+                    if(!deebo.methods.hideColumnFilters){
+                        div.appendChild(deebo.methods.insertSelectComparator(useCol, inputType))
+                        div.appendChild(deebo.methods.insertSelectComparatorBtn())
+                    }
                     if(window.innerWidth >= deebo.methods.mouseEventBreak){
                         div.addEventListener("mousemove", tblDragEvents.methods.checkItemBorderCursor)
                         div.addEventListener("mousemove", tblDragEvents.methods.handleHeaderSizeAdjust)
@@ -3489,7 +3539,8 @@ deebo.methods = function() {
                         deebo.methods.unbindMouseRemoveEvts(name)
                         deebo.methods.unbindMouseRemoveEvts(arr)
                         deebo.methods.unbindMouseRemoveEvts(min)
-                        deebo.methods.unbindMouseRemoveEvts(inp)
+                        if(inp && !deebo.methods.hideColumnFilters)
+                            deebo.methods.unbindMouseRemoveEvts(inp)
                         deebo.methods.unbindMouseRemoveEvts(xfil)
                     }
                     if(okEnt && allowFreeze)
@@ -3501,7 +3552,7 @@ deebo.methods = function() {
                     }
                     div.addEventListener("dblclick", tblDragEvents.methods.handleColResDblClick)
                     head.appendChild(div)
-                }catch(e){ }
+                }catch(e){console.log(e) }
             },
 
             makeElRWaterMrk: function() {
@@ -4477,8 +4528,9 @@ deebo.methods = function() {
                 if(deebo.methods.rowNumbers)
                     try{ document.getElementById("rowNumBody").innerHTML = ""}catch(e){}
                 const filTrkr = dataTableService.methods.getFilTrkerData();
+                const tlVal = document.getElementById("topLevelDataFilter")?.value
                 if(deebo.methods.paginate && dataTableService.methods.serverSideTotal > 0 && Object.keys(filTrkr).length)//only on ss pagination
-                    try{dataFiltered({ topLevelFilter: document.getElementById("topLevelDataFilter").value, columnConfig: filTrkr, sortOrder: [...dataTableService.methods.sortOrder] })}catch(e){}
+                    try{dataFiltered({ topLevelFilter: tlVal, columnConfig: filTrkr, sortOrder: [...dataTableService.methods.sortOrder] })}catch(e){}
                 if(deebo.methods.paginate && dataTableService.methods.serverSideTotal > 0){
                     let ssN = ((dataTableService.methods.currPage-1)*dataTableService.methods.rowsPerPage)
                     if(ssN > dataTableService.methods.getTotal())
@@ -4744,9 +4796,11 @@ deebo.methods = function() {
                 dataTableService.methods.currFilData = dataTableService.methods.mainData?.filter( function(d) { return true })
                 deebo.methods.renderCurrData(true, col)
                 const skp = document.getElementById("skipTo")
+                const tlDF = document.getElementById("topLevelDataFilter")
                 if(skp)
                     skp.value = ""
-                document.getElementById("topLevelDataFilter").value = ""
+                if(tlDF)
+                    tlDF.value = ""
                 const dct = dataTableService.methods.currFilData?.length.toLocaleString(undefined, { maximumFractionDigits: 0 })
                 const tRows = document.getElementById("totalRows")
                 if(tRows){
@@ -5284,7 +5338,9 @@ deebo.methods = function() {
                 if(btnCharts)
                     btnCharts.disabled = disable
                 document.getElementById("btnReset").disabled = disable
-                document.getElementById("topLevelDataFilter").disabled = disable
+                const tlDF = document.getElementById("topLevelDataFilter")
+                if(tlDF)
+                    tlDF.disabled = disable
             },
 
             clearSelInsights: function() {
@@ -7703,8 +7759,9 @@ deebo.methods = function() {
                     dataTableService.methods.currPage = max
                 }
                 deebo.methods.setPagi(dataTableService.methods.currPage)
+                const tlV = document.getElementById("topLevelDataFilter")?.value;
                 if(dataTableService.methods.serverSideTotal > 0)
-                    return deebo.methods.handlePageChange({skip: (dataTableService.methods.currPage-1), take: dataTableService.methods.rowsPerPage, topLevelFilter: document.getElementById("topLevelDataFilter").value, columnConfig: dataTableService.methods.getFilTrkerData(), sortOrder: [...dataTableService.methods.sortOrder]})
+                    return deebo.methods.handlePageChange({skip: (dataTableService.methods.currPage-1), take: dataTableService.methods.rowsPerPage, topLevelFilter: tlV, columnConfig: dataTableService.methods.getFilTrkerData(), sortOrder: [...dataTableService.methods.sortOrder]})
                 deebo.methods.renderCurrData(false)
             },
 
