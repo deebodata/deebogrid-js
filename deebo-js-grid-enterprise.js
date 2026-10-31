@@ -4363,7 +4363,7 @@ deebo.methods = function() {
                 const topFilt = (event && event.target && event.target.id === "topLevelDataFilter") ? "topLevelDataFilter" : null;
                 const elCol = event?.target?.id.replace(/filter/g, "")
                 const field = deebo.methods.replaceUniSep(elCol)
-                if(!dataTableService.methods.dataFilSrtTracker[field]){
+                if(!topFilt && !dataTableService.methods.dataFilSrtTracker[field]){
                     dataTableService.methods.isFiltering = false
                     return;
                 }
