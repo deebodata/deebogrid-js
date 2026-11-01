@@ -2066,14 +2066,14 @@ deebo.methods = function() {
                     return e.target.blur()
                 const mdIndx = e.target?.getAttribute("data-index") || e.target?.parentElement?.getAttribute("data-index")//data-table-row
                 deebo.methods.currEditIndex = mdIndx
-                const cell = /data-cell/g.test(e.target.className) ? e.target : e.target.firstElementChild;
+                const cell = /data-cell/g.test(e.target.className) ? e.target : null;
                 if(cell){
                     if(!cell.getAttribute("contenteditable") && !/<(i|a)/g.test(cell.textContent))
                         deebo.methods.lockCellFocus = true;
                     const elProp = deebo.methods.getColFrmClsList(cell, "data-cell-")
                     const col = deebo.methods.replaceUniSep(elProp)
                     const filInp = document.getElementById("filter" + elProp)
-                    const type = filInp?.getAttribute("type")
+                    const type = deebo.methods.figureFilterType(col)
                     deebo.methods.currEditCol = col
                     const cellWid = parseInt(deebo.methods.useColWid?.replace(/px/g, "") || "250")
                     if(cell.getBoundingClientRect().right+cellWid >= dataTableService.methods.tblRight){
@@ -2127,11 +2127,31 @@ deebo.methods = function() {
             },
 
             cellEditNeedsVal: function(col, cell, filInp, type) {
-                if(col && !/<(img|a)/g.test(cell.innerHTML) && (filInp && ["number", "date"].indexOf(type) > -1 || 
-                    (dataTableService.methods.dataFilSrtTracker[col] &&dataTableService.methods.dataFilSrtTracker[col].selDDVals && dataTableService.methods.dataFilSrtTracker[col].selDDVals.length))){
+                if(col && !/<(img|a)/g.test(cell.innerHTML) && (["number", "date"].indexOf(type) > -1 || 
+                    (dataTableService.methods.dataFilSrtTracker[col] && dataTableService.methods.dataFilSrtTracker[col].selDDVals && dataTableService.methods.dataFilSrtTracker[col].selDDVals.length))){
                         return true
                 }
                 return false;
+            },
+
+            testCanBeForValidatedCell: function(col, type, text) {
+                if(type === "number"){
+                    if(!isNaN(parseFloat(text)) && !/[A-Za-z]/g.test(text))
+                        return true
+                    return false
+                }
+                if(type === "date"){
+                    if(deebo.methods.isADateObject(text))
+                        return true
+                    return false
+                }
+                if(dataTableService.methods.dataFilSrtTracker[col] && dataTableService.methods.dataFilSrtTracker[col].selDDVals && 
+                   dataTableService.methods.dataFilSrtTracker[col].selDDVals.length){
+                        if(dataTableService.methods.dataFilSrtTracker[col].selDDVals.map( function(d) {return d.value}).indexOf(text) > -1)
+                            return true;
+                        return false
+                }
+                return true;
             },
 
             handleValidatedCellEditFocus: function(cell, type, value) {
@@ -2508,8 +2528,9 @@ deebo.methods = function() {
                 const el = event?.target
                 const elProp = deebo.methods.getColFrmClsList(el, "data-cell-")
                 const filInp = document.getElementById("filter" + elProp)
-                const type = filInp?.getAttribute("type")
-                if(deebo.methods.cellEditNeedsVal(deebo.methods.replaceUniSep(elProp), el, filInp, type)/*only for validated edits*/ || 
+                const realProp = deebo.methods.replaceUniSep(elProp)
+                const type = deebo.methods.figureFilterType(realProp)
+                if(deebo.methods.cellEditNeedsVal(realProp, el, filInp, type)/*only for validated edits*/ || 
                 (event.relatedTarget && event.relatedTarget.classList.contains("edit-input")))
                     return;
                 deebo.methods.execCellEdit(event)
@@ -2555,7 +2576,9 @@ deebo.methods = function() {
                             col = deebo.methods.getColFrmClsList(e.target, "data-cell-")
                         realProp = deebo.methods.replaceUniSep(col)
                     }
-                    const filInp = document.getElementById("filter" + col)
+                    const dtType =deebo.methods.figureFilterType(realProp)
+                    if(!deebo.methods.testCanBeForValidatedCell(col, dtType, val))
+                        return;//stops invalid edits
                     const nwVal = dataTableService.methods.mainData[deebo.methods.currEditIndex][realProp]
                     if(nwVal === val)
                         valueDidChange = false;//still do everything, just tell them
@@ -2566,8 +2589,7 @@ deebo.methods = function() {
                         if(cfDIdx > -1)
                             dataTableService.methods.currFilData[cfDIdx][realProp] = val
                     }
-                    const dtType =filInp.getAttribute("type")
-                    const notNum = (filInp && (dtType != "number" || /(year|yr|fy)/g.test(realProp.toLocaleLowerCase()))) ? true : false;
+                    const notNum = (dtType && (dtType != "number" || /(year|yr|fy)/g.test(realProp.toLocaleLowerCase()))) ? true : false;
                     const useTxt = deebo.methods.figureCellText(val, notNum, dataTableService.methods.dataFilSrtTracker[realProp]?.["colCellSymbol"]);
                     const cell= document.querySelector("#dataTableRow" + deebo.methods.currEditIndex + " .data-cell-" + col)
                     if(useTxt.prop === "textContent"){
@@ -2955,7 +2977,8 @@ deebo.methods = function() {
 
             shouldValidateEdit: function(col, filInp) {
                 const trker = dataTableService.methods.dataFilSrtTracker[col]
-                if((filInp && ["number", "date"].indexOf(filInp.getAttribute("type")) > -1) || 
+                const type = deebo.methods.figureFilterType(col)
+                if((type && ["number", "date"].indexOf(type) > -1) || 
                 (trker && trker.selDDVals && trker.selDDVals.length))
                     return true
                 return false
@@ -2987,10 +3010,10 @@ deebo.methods = function() {
             updateCell: function(cell, prop, elProp, text, indx, horizScrl) {
                 const head = document.getElementById("columnHeader" + elProp)
                 const filInp = document.getElementById("filter" + elProp)
-                const canEdit = deebo.methods.editable && !dataTableService.methods.currGroup && !deebo.methods.shouldValidateEdit(prop, filInp);
-                const notNum = (filInp && (filInp.getAttribute("type") != "number" || /(year|yr|fy)/g.test(prop.toLocaleLowerCase()))) ? true : false;
-                const colStyle = dataTableService.methods.getColumnStyle(prop)
                 const filType = deebo.methods.figureFilterType(prop);
+                const canEdit = deebo.methods.editable && !dataTableService.methods.currGroup && !deebo.methods.shouldValidateEdit(prop, filInp);
+                const notNum = ((filType != "number" || /(year|yr|fy)/g.test(prop.toLocaleLowerCase()))) ? true : false;
+                const colStyle = dataTableService.methods.getColumnStyle(prop)
                 if(head){
                     const cfree = "col-item-freeze"
                     const cmin = "col-header-minimized"
@@ -3054,8 +3077,8 @@ deebo.methods = function() {
             },
 
             updateCellOnVertScroll: function(cell, prop, elProp, text) {
-                const filInp = document.getElementById("filter" + elProp)
-                const notNum = (filInp && (filInp.getAttribute("type") != "number" || /(year|yr|fy)/g.test(prop.toLocaleLowerCase()))) ? true : false;
+                const filType = deebo.methods.figureFilterType(prop);
+                const notNum = ((filType != "number" || /(year|yr|fy)/g.test(prop.toLocaleLowerCase()))) ? true : false;
                 const colStyle = dataTableService.methods.getColumnStyle(prop)
                 let useTxt;
                 if(dataTableService.methods.dataFilSrtTracker && dataTableService.methods.dataFilSrtTracker[prop]){
@@ -4609,11 +4632,11 @@ deebo.methods = function() {
                             cell.className += " col-header-minimized"
                         }
                         const head = document.getElementById("columnHeader" + elProp)
+                        const filType = deebo.methods.figureFilterType(prop);
                         const filInp = document.getElementById("filter" + elProp)
                         const canEdit = deebo.methods.editable && !deebo.methods.shouldValidateEdit(prop, filInp);
-                        const notNum = (filInp && (filInp.getAttribute("type") != "number" || /(year|yr|fy)/g.test(prop.toLocaleLowerCase()))) ? true : false;
+                        const notNum = ((filType != "number" || /(year|yr|fy)/g.test(prop.toLocaleLowerCase()))) ? true : false;
                         const colStyle = dataTableService.methods.getColumnStyle(prop)
-                        const filType = deebo.methods.figureFilterType(prop);
                         if(head && head.classList.contains("col-item-freeze"))
                             cell.classList.add("col-item-freeze")
                         if((filInp && filInp.getAttribute("type") === "number") || filType === "number")
@@ -8838,9 +8861,9 @@ groupBy.methods = function() {
                             cell.style.height = dataTableService.methods.defltRHgt
                             const head = document.getElementById("columnHeader" + elProp)
                             const filInp = document.getElementById("filter" + elProp)
-                            const notNum = (filInp && (filInp.getAttribute("type") != "number" || /(year|yr|fy)/g.test(prop.toLocaleLowerCase()))) ? true : false;
-                            const colStyle = dataTableService.methods.getColumnStyle(prop)
                             const filType = deebo.methods.figureFilterType(prop);
+                            const notNum = ((filType != "number" || /(year|yr|fy)/g.test(prop.toLocaleLowerCase()))) ? true : false;
+                            const colStyle = dataTableService.methods.getColumnStyle(prop)
                             if(head && head.classList.contains("col-item-freeze"))
                                 cell.classList.add("col-item-freeze")
                             if((filInp && filInp.getAttribute("type") === "number") || filType === "number")
@@ -9215,9 +9238,9 @@ groupBy.methods = function() {
                 const head = document.getElementById("columnHeader" + elProp)
                 const filInp = document.getElementById("filter" + elProp)
                 // const canEdit = false;
-                const notNum = (filInp && (filInp.getAttribute("type") != "number" || /(year|yr|fy)/g.test(prop.toLocaleLowerCase()))) ? true : false;
-                const colStyle = dataTableService.methods.getColumnStyle(prop)
                 const filType = deebo.methods.figureFilterType(prop);
+                const notNum = ((filType != "number" || /(year|yr|fy)/g.test(prop.toLocaleLowerCase()))) ? true : false;
+                const colStyle = dataTableService.methods.getColumnStyle(prop)
                 if(head){
                     const cfree = "col-item-freeze"
                     const cmin = "col-header-minimized"
