@@ -146,6 +146,11 @@ deebo.methods = function() {
                 }
             },
 
+            setColoredNumbersColumns: function(numCols) {
+                if(numCols && typeof numCols === "object" && numCols.length)
+                    dataTableService.methods.coloredNumbersColumns = numCols.filter( function(n) { return true });
+            },
+
             setColumnValueColors: function(colValColors) {
                 if(colValColors && typeof colValColors === "object" && colValColors.length){
                     let i = 0;
@@ -1567,12 +1572,15 @@ deebo.methods = function() {
                             cell.style.height = dataTableService.methods.defltRHgt
                             const head = document.getElementById("columnHeader" + elProp)
                             const filInp = document.getElementById("filter" + elProp)
+                            const filType = deebo.methods.figureFilterType(prop);
                             const canEdit = deebo.methods.editable && !deebo.methods.shouldValidateEdit(prop, filInp);
                             const notNum = (filInp && (filInp.getAttribute("type") != "number" || /(year|yr|fy)/g.test(prop.toLocaleLowerCase()))) ? true : false;
                             const colStyle = dataTableService.methods.getColumnStyle(prop)
+                            if(filType === "number" && text != 0 && dataTableService.methods.coloredNumbersColumns.indexOf(prop) > -1)
+                                cell.style.color = text > 0 ? "#009966" : "#e7000b";
                             if(head && head.classList.contains("col-item-freeze"))
                                 cell.classList.add("col-item-freeze")
-                            if(filInp && filInp.getAttribute("type") === "number")
+                            if((filInp && filInp.getAttribute("type") === "number") || filType === "number")
                                 cell.classList.add("data-cell-riiight")
                             let useTxt; let sym;
                             if(dataTableService.methods.dataFilSrtTracker && dataTableService.methods.dataFilSrtTracker[prop]){
@@ -2982,6 +2990,7 @@ deebo.methods = function() {
                 const canEdit = deebo.methods.editable && !dataTableService.methods.currGroup && !deebo.methods.shouldValidateEdit(prop, filInp);
                 const notNum = (filInp && (filInp.getAttribute("type") != "number" || /(year|yr|fy)/g.test(prop.toLocaleLowerCase()))) ? true : false;
                 const colStyle = dataTableService.methods.getColumnStyle(prop)
+                const filType = deebo.methods.figureFilterType(prop);
                 if(head){
                     const cfree = "col-item-freeze"
                     const cmin = "col-header-minimized"
@@ -2990,11 +2999,13 @@ deebo.methods = function() {
                     if(head.classList.contains(cmin))
                         cell.classList.add(cmin)
                 }
-                if(filInp && filInp.getAttribute("type") === "number")
+                if((filInp && filInp.getAttribute("type") === "number") || filType === "number")
                     cell.classList.add("data-cell-riiight")
                 let useTxt; let sym;
                 cell.style.width = dataTableService.methods.dataFilSrtTracker[prop]?.colWidth || deebo.methods.useColWid
                 cell.style.height = horizScrl ? (cell.parentElement?.getBoundingClientRect().height + "px") : dataTableService.methods.defltRHgt;
+                if(filType === "number" && text != 0 && dataTableService.methods.coloredNumbersColumns.indexOf(prop) > -1)
+                    cell.style.color = text > 0 ? "#009966" : "#e7000b";
                 if(dataTableService.methods.dataFilSrtTracker && dataTableService.methods.dataFilSrtTracker[prop]){
                     sym = dataTableService.methods.dataFilSrtTracker[prop]["colCellSymbol"]
                     useTxt = deebo.methods.figureCellText(text, notNum, dataTableService.methods.dataFilSrtTracker[prop]["colCellSymbol"])
@@ -4602,13 +4613,16 @@ deebo.methods = function() {
                         const canEdit = deebo.methods.editable && !deebo.methods.shouldValidateEdit(prop, filInp);
                         const notNum = (filInp && (filInp.getAttribute("type") != "number" || /(year|yr|fy)/g.test(prop.toLocaleLowerCase()))) ? true : false;
                         const colStyle = dataTableService.methods.getColumnStyle(prop)
+                        const filType = deebo.methods.figureFilterType(prop);
                         if(head && head.classList.contains("col-item-freeze"))
                             cell.classList.add("col-item-freeze")
-                        if(filInp && filInp.getAttribute("type") === "number")
+                        if((filInp && filInp.getAttribute("type") === "number") || filType === "number")
                             cell.classList.add("data-cell-riiight")
                         let useTxt; let sym;
                         cell.style.height = dataTableService.methods.defltRHgt
                         cell.style.width = dataTableService.methods.dataFilSrtTracker[prop]?.colWidth || deebo.methods.useColWid
+                        if(filType === "number" && text != 0 && dataTableService.methods.coloredNumbersColumns.indexOf(prop) > -1)
+                            cell.style.color = text > 0 ? "#009966" : "#e7000b";
                         if(dataTableService.methods.dataFilSrtTracker && dataTableService.methods.dataFilSrtTracker[prop]){
                             sym = dataTableService.methods.dataFilSrtTracker[prop]["colCellSymbol"]
                             useTxt = deebo.methods.figureCellText(text, notNum, dataTableService.methods.dataFilSrtTracker[prop]["colCellSymbol"])
@@ -7893,6 +7907,8 @@ dataTableService.methods = function() {
 
             columnStyles: [],
 
+            coloredNumbersColumns: [],
+
             columnValueColors: [],
 
             forceGroups: [],
@@ -8824,10 +8840,13 @@ groupBy.methods = function() {
                             const filInp = document.getElementById("filter" + elProp)
                             const notNum = (filInp && (filInp.getAttribute("type") != "number" || /(year|yr|fy)/g.test(prop.toLocaleLowerCase()))) ? true : false;
                             const colStyle = dataTableService.methods.getColumnStyle(prop)
+                            const filType = deebo.methods.figureFilterType(prop);
                             if(head && head.classList.contains("col-item-freeze"))
                                 cell.classList.add("col-item-freeze")
-                            if(filInp && filInp.getAttribute("type") === "number")
+                            if((filInp && filInp.getAttribute("type") === "number") || filType === "number")
                                 cell.classList.add("data-cell-riiight")
+                            if(filType === "number" && text != 0 && dataTableService.methods.coloredNumbersColumns.indexOf(prop) > -1)
+                                cell.style.color = text > 0 ? "#009966" : "#e7000b";
                             let useTxt; let sym;
                             if(dataTableService.methods.dataFilSrtTracker && dataTableService.methods.dataFilSrtTracker[prop]){
                                 sym = dataTableService.methods.dataFilSrtTracker[prop]["colCellSymbol"]
@@ -9195,9 +9214,10 @@ groupBy.methods = function() {
             updateCell: function(cell, prop, elProp, text, indx, horizScrl) {
                 const head = document.getElementById("columnHeader" + elProp)
                 const filInp = document.getElementById("filter" + elProp)
-                const canEdit = false;
+                // const canEdit = false;
                 const notNum = (filInp && (filInp.getAttribute("type") != "number" || /(year|yr|fy)/g.test(prop.toLocaleLowerCase()))) ? true : false;
                 const colStyle = dataTableService.methods.getColumnStyle(prop)
+                const filType = deebo.methods.figureFilterType(prop);
                 if(head){
                     const cfree = "col-item-freeze"
                     const cmin = "col-header-minimized"
@@ -9206,11 +9226,13 @@ groupBy.methods = function() {
                     if(head.classList.contains(cmin))
                         cell.classList.add(cmin)
                 }
-                if(filInp && filInp.getAttribute("type") === "number")
+                if((filInp && filInp.getAttribute("type") === "number") || filType === "number")
                     cell.classList.add("data-cell-riiight")
                 let useTxt; let sym;
                 cell.style.width = dataTableService.methods.dataFilSrtTracker[prop]?.colWidth || deebo.methods.useColWid
                 cell.style.height = horizScrl ? (cell.parentElement?.getBoundingClientRect().height + "px") : dataTableService.methods.defltRHgt;
+                if(filType === "number" && text != 0 && dataTableService.methods.coloredNumbersColumns.indexOf(prop) > -1)
+                    cell.style.color = text > 0 ? "#009966" : "#e7000b";
                 if(dataTableService.methods.dataFilSrtTracker && dataTableService.methods.dataFilSrtTracker[prop]){
                     sym = dataTableService.methods.dataFilSrtTracker[prop]["colCellSymbol"]
                     useTxt = deebo.methods.figureCellText(text, notNum, dataTableService.methods.dataFilSrtTracker[prop]["colCellSymbol"])
