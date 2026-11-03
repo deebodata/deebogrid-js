@@ -80,6 +80,8 @@ deebo.methods = function() {
             handlingPageChange: false,
             pageLoadMessage: "Loading...",
             lastPage: 1,
+            tabDownTO: null,
+            blockEditOnManualScrl: false,
             /*real paginator props*/
 
             //PROGRAMMABILITY
@@ -2502,29 +2504,42 @@ deebo.methods = function() {
                             nxtCell.focus()
                         } else {
                             deebo.methods.autoScrollOnEdit = true
+                            deebo.methods.blockEditOnManualScrl = true
                             deebo.methods.scrollBodyForTabbing()
-                            const nxtRowCell = e.target?.parentElement?.nextElementSibling?.firstElementChild
-                            if(nxtRowCell)
-                                nxtRowCell.focus()
+                            let nxtRowId = e.target?.parentElement?.nextElementSibling?.id;
+                            if(nxtRowId){
+                                if(deebo.methods.tabDownTO)
+                                    clearTimeout(deebo.methods.tabDownTO)
+                                deebo.methods.tabDownTO = setTimeout( function() {
+                                    const row = document.getElementById(nxtRowId)
+                                    if(row && row.firstElementChild)
+                                        row.firstElementChild.focus()
+                                    setTimeout( function() {deebo.methods.blockEditOnManualScrl = false})
+                                }, 125)
+                            }
                             else{
                                 const skp = document.getElementById("skipTo")
                                 if(skp)
                                     skp.focus()
+                                setTimeout( function() {deebo.methods.blockEditOnManualScrl = false})
                             }
                         }
                     }
                 }
             },
 
-            scrollBodyForTabbing: function(neg) {
+            scrollBodyForTabbing: function() {
                 const dtb = document.getElementById("dataTableBody")
-                if(dtb){
-                    const scrlBy = parseInt(dataTableService.methods.defltRHgt.replace(/[ ]?px/g, ""))
-                    dtb.scrollBy(0, ((neg || 1)*scrlBy))
+                if(dtb){//could test for shift key down
+                    const scrlBy = parseInt(dataTableService.methods.defltRHgt.replace(/[ ]?px/g, ""));
+                    dtb.scrollTop += scrlBy;
+                    deebo.methods.execVertScroll(dtb.scrollTop)
                 }
             },
 
             emitEdit: function(event) {
+                if(deebo.methods.blockEditOnManualScrl)
+                    return;
                 const el = event?.target
                 const elProp = deebo.methods.getColFrmClsList(el, "data-cell-")
                 const filInp = document.getElementById("filter" + elProp)
@@ -8739,7 +8754,7 @@ tblDragEvents.methods = function() {
                     return;
                 const useCol = div?.id.replace(/columnHeader/g, "")
                 const btnMn = document.getElementById("btnMin" + useCol)
-                nwBtnFz.parentElement.removeChild(nwBtnFz)
+                try{ nwBtnFz.parentElement.removeChild(nwBtnFz) }catch(e){ }
                 if(div && btnMn && !document.getElementsByClassName("btn-freeze-col").length){
                     const btnfz = document.createElement("button")
                     btnfz.type = "button"
