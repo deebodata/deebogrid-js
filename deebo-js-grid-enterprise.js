@@ -3456,9 +3456,8 @@ deebo.methods = function() {
             jumpToRow: function(row) {
                 const tbl = document.getElementById("dataTableBody")
                 if(tbl){
-                    const ind = row - 1
-                    tbl.scrollTop = ind*dataTableService.methods.defltRHgtNum
-                    deebo.methods.execVertScroll(tbl.scrollTop)
+                    const ind = row - 1;
+                    deebo.methods.renderCurrData(false, null, (ind*dataTableService.methods.defltRHgtNum))
                 }
             },
 
@@ -4558,7 +4557,7 @@ deebo.methods = function() {
                 deebo.methods.belowHgt = 0
             },
 
-            renderCurrData: function(reset, field) {
+            renderCurrData: function(reset, field, top) {
                 const tbody = document.getElementById("dataTableBody")
                 const tbodyX = tbody.scrollLeft
                 tbody.innerHTML = ""
@@ -4797,6 +4796,8 @@ deebo.methods = function() {
                     setTimeout( function() { 
                         deebo.methods.setRowSelChecksPlacement()
                         deebo.methods.setHoldingCheckCls()
+                        if(top && tbody)
+                            tbody.scrollTop = top
                     })
                     setTimeout( function() { //add rows that won't render yet
                         deebo.methods.setIdealColWidth(deebo.methods.columnNames, horizLim)
