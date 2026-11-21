@@ -124,6 +124,18 @@ deebo.methods = function() {
                     deebo.methods.themeColor2 = color2
             },
 
+            setColumnDef: function(cols) {
+                if(cols && typeof cols === "object" && cols.length){
+                    let i = 0;
+                    const len = cols.length
+                    for(i; i < len; i++){
+                        const col = cols[i]
+                        if(Object.hasOwn(col, "column"))
+                            dataTableService.methods.initColumnDef.push(col)
+                    }
+                }
+            },
+
             setColumnSymbols: function(colSymbols) {//{ column: "width", symbol: "px" }
                 if(colSymbols && typeof colSymbols === "object" && colSymbols.length){
                     let i = 0;
@@ -277,7 +289,7 @@ deebo.methods = function() {
             //PROGRAMMABILITY
 
             getAllColsAtRuntime: function(excludeDuid, excludeHidden) {
-                let cols = (typeof dataTableService.methods.mainData[0] === "object" ? Object.keys(dataTableService.methods.mainData[0]) : 
+                let cols = (typeof dataTableService.methods.mainData[0] === "object" ? deebo.methods.getApplicableCols(dataTableService.methods.mainData[0]) : 
                 Object.keys(dataTableService.methods.dataFilSrtTracker));
                 if(!excludeHidden)
                     return cols;
@@ -597,7 +609,7 @@ deebo.methods = function() {
                                     if(val && typeof val === "object" && typeof val.getTime === "undefined")/**not dates */
                                         try{ nData[i][prop] = JSON.stringify(val).replace(/[\[\]{}\"]/g, "").replace(/:/g, ": ").replace(/,/g, ", ").replace(/  /g, " ")}catch(e){}
                                 }
-                                const keys = Object.keys(data[i])
+                                const keys = deebo.methods.getApplicableCols(data[i])
                                 const diff = allCols.filter( function(c) { return keys.indexOf(c) < 0 })
                                 const dLen = diff.length
                                 if(dLen){//obj doesn't have all props
@@ -1521,9 +1533,16 @@ deebo.methods = function() {
                 deebo.methods.renderCurrData(false)
             },
 
+            setInitColWidth: function(prop) {
+                const def = dataTableService.methods.initColumnDef.find( function(c) { return c.column === prop })
+                if(def && def.width)
+                    return (def.width + "px");
+                return dataTableService.methods.useColWid;
+            },
+
             buildInitUiDataTable: function(data, color1, color2, blockEditing, hideRowNumbers) {//will be array of objects
                 try{
-                    const cols = Object.keys(data[0])         
+                    const cols = deebo.methods.getApplicableCols(data[0])         
                     const head = document.getElementById("dataTableHeaders")
                     const tbody = document.getElementById("dataTableBody")
                     const rcont = document.getElementById(deebo.methods.rowContId)
@@ -1555,6 +1574,8 @@ deebo.methods = function() {
                     let canFreeze
                     for(i; i < colLen; i++){
                         const col = cols[i]
+                        const colWid = deebo.methods.setInitColWidth(col);
+                        dataTableService.methods.dataFilSrtTracker[col].colWidth = colWid
                         canFreeze = i === 0 && !document.getElementsByClassName("col-header").length
                         deebo.methods.insertColumnHeader(col, head, canFreeze, tonce)
                         if(i < maxCols)
@@ -1570,7 +1591,7 @@ deebo.methods = function() {
                         cell.className += (" data-cell-" + elProp)
                         cell.tabIndex = 0
                         if(vis){
-                            cell.style.width = deebo.methods.useColWid
+                            cell.style.width = deebo.methods.setInitColWidth(prop)
                             cell.style.height = dataTableService.methods.defltRHgt
                             const head = document.getElementById("columnHeader" + elProp)
                             const filInp = document.getElementById("filter" + elProp)
@@ -1702,7 +1723,8 @@ deebo.methods = function() {
                             blw.style.height = deebo.methods.belowHgt + "px"
                         }
                         dataTableService.methods.setTableBounds()
-                        deebo.methods.setIdealColWidth(cols, horizLim)
+                        if(!dataTableService.methods.initColumnDef.some( function(d) {return d.width}))
+                            deebo.methods.setIdealColWidth(cols, horizLim)
                         deebo.methods.setColsOnVisScreen()
                     }, 250)
                     deebo.methods.getPrimaryKey(cols)
@@ -3495,6 +3517,15 @@ deebo.methods = function() {
                 });
             },
 
+            figureColumnTitle: function(column) {
+                if(!dataTableService.methods.initColumnDef.length)
+                    return deebo.methods.titleCase(column);
+                const colDef = dataTableService.methods.initColumnDef.find( function(c) {return c.column === column});
+                if(colDef && colDef.displayName)
+                    return colDef.displayName;
+                return deebo.methods.titleCase(column);
+            },
+
             insertColumnHeader: function(col, head, allowFreeze, okEnt) {
                 try{
                     const div = document.createElement("div")
@@ -3505,9 +3536,9 @@ deebo.methods = function() {
                     const xfil = document.createElement("button")
                     const iMin = document.createElement("i")
                     const inp = document.createElement("input")
-                    div.style.width = deebo.methods.useColWid
+                    div.style.width = deebo.methods.setInitColWidth(col)
                     div.className = "col-header"
-                    const prettyCol = deebo.methods.titleCase(col)
+                    const prettyCol = deebo.methods.figureColumnTitle(col)
                     col = deebo.methods.stripSpecChars(col)
                     const useCol = col.replace(/ /g, deebo.methods.uniSep)
                     div.id = "columnHeader" + useCol
@@ -3607,13 +3638,36 @@ deebo.methods = function() {
                 return "url(\"https://d2ffvluimla00s.cloudfront.net/deebo-water.webp\")";
             },
 
+            getApplicableCols: function(obj) {
+                let cols = Object.keys(obj);
+                const len = dataTableService.methods.initColumnDef.length;
+                if(len){
+                    let i = 0
+                    let check = [];
+                    for(i; i < len; i++){
+                        const dcol = dataTableService.methods.initColumnDef[i].column;
+                        if(cols.includes(dcol) && !check.includes(dcol))//make sure it's actually there
+                            check.push(dcol)
+                    }
+                    if(check.length)
+                        cols = [...check]
+                }
+                if(!deebo.methods.loggedColumns){
+                    console.log(cols)
+                    deebo.methods.loggedColumns = true
+                }
+                return cols;
+            },
+
+            loggedColumns: false,
+
             getDataColumns: function(data) {
                 let i = 0
-                let cols = Object.keys(data[0])
+                let cols = deebo.methods.getApplicableCols(data[0])
                 const len = data.length
                 for(i; i < len; i++){
                     const obj = data[i]
-                    const keys = Object.keys(obj)
+                    const keys = deebo.methods.getApplicableCols(obj)
                     const notInCols = keys.filter( function(k) { return cols.indexOf(k) < 0 })
                     if(typeof obj === "object" && notInCols.length){
                         let n = 0
@@ -4477,7 +4531,7 @@ deebo.methods = function() {
                     if(topFilt){
                         dataTableService.methods.easyFilter((val || ""), dataTableService.methods.mainData, dataTableService.methods.sortOrder)
                         if(!val && !dataTableService.methods.arefilSrtTrkPropsDefault()){
-                            let altField = Object.keys(dataTableService.methods.mainData[0])[0]
+                            let altField = deebo.methods.getApplicableCols(dataTableService.methods.mainData[0])[0]
                             dataTableService.methods.columnFilter(dataTableService.methods.mainData, altField, dataTableService.methods.dataFilSrtTracker, dataTableService.methods.sortOrder, manual)
                         }
                     } else {
@@ -4799,9 +4853,11 @@ deebo.methods = function() {
                         if(top && tbody)
                             tbody.scrollTop = top
                     })
-                    setTimeout( function() { //add rows that won't render yet
-                        deebo.methods.setIdealColWidth(deebo.methods.columnNames, horizLim)
-                    }, 250)
+                    if(!dataTableService.methods.initColumnDef.some( function(d) {return d.width})){
+                        setTimeout( function() {
+                            deebo.methods.setIdealColWidth(deebo.methods.columnNames, horizLim)
+                        }, 250)
+                    }
                 }
             },
 
@@ -7941,6 +7997,8 @@ dataTableService.methods = function() {
                 number: ["Equals", "Not Equal", "Empty", "Not Empty", "Less Than", "Less Than or Equal", "Greater Than", "Greater Than or Equal"],
                 date: ["Equals", "Not on", "Empty", "Not Empty", "Before", "After"],
             },
+
+            initColumnDef: [],
 
             columnSymbols: [],//{ column: "width", symbol: "px" },
 

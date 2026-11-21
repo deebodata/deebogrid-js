@@ -7,6 +7,15 @@
     </div>
     <script src="./deebo-js-grid-enterprise.js"></script>
     <script>
+        deebo.methods.setDfltRowHgt("80px")
+        deebo.methods.setColumnDef([
+    { column: 'stimulus img id', displayName: "ID", width: 150},
+    { column: 'prompt', displayName: "AI Prompt", width: 600}, 
+    { column: 'category', width: 160}, 
+    { column: 'width', width: 160}, 
+    { column: 'height', width: 160}, 
+    { column: 'extension', width: 160}, 
+  ])
         deebo.methods.setInitMethod("GET")//sets http method
         deebo.methods.setInitResProp("result")//sets property in response with the array, pass an empty string if your entire response is the array
         deebo.methods.setInitApiUrl("https://d2ffvluimla00s.cloudfront.net/stim_imgs_comm.json")//api url
