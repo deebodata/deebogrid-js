@@ -68,6 +68,7 @@ deebo.methods = function() {
             disableCharts: false,
             disableGroupBy: false,
             disableExport: false,
+            hideFooter: false,//disable footer when not paginating
             // disableRowSelection: false,
             hideJumpTo: false,
             hideColumnFilters: false,
@@ -110,6 +111,10 @@ deebo.methods = function() {
                     dataTableService.methods.defltRHgt = rowHght
                     dataTableService.methods.defltRHgtNum = parseInt(rowHght.replace(/[ ]?(px|vh|\%)/g, ""));
                 }
+            },
+
+            setFooterHidden: function(hide) {
+                deebo.methods.hideFooter = hide;
             },
 
             setForcedGroups: function(columns) {
@@ -481,8 +486,11 @@ deebo.methods = function() {
                 const cLen = cols.length
                 for(x; x < cLen; x++){
                     const col = cols[x]
+                    const span = col.firstElementChild
                     col["style"].removeProperty("height")
                     col["style"].removeProperty("line-height")
+                    if(span && span.nodeName === "SPAN")
+                        span["style"].removeProperty("line-height")
                 }
                 for(z; z < cLen; z++)
                     hgts.push(cols[z].getBoundingClientRect().height)
@@ -491,7 +499,11 @@ deebo.methods = function() {
                 for(i; i < cLen; i++){
                     const col = cols[i]
                     if(col && !col.classList.contains("col-header-minimized")){
+                        const span = col.firstElementChild
                         col["style"]["height"] = useHgt + "px"
+                        const colProp = deebo.methods.replaceUniSep(col.id.replace(/columnHeader/g, ""))
+                        if(span && span.nodeName === "SPAN" && deebo.methods.hideSingleColumnFilter(colProp))
+                            span["style"]["lineHeight"] = (useHgt-14) + "px";//7px vert padding top/bottom
                         if(col.firstElementChild.getBoundingClientRect().height < 40)
                             col["style"]["lineHeight"] = Math.floor(((useHgt/2)-21)) + "px"
                     }
@@ -1467,7 +1479,8 @@ deebo.methods = function() {
                         if(deebo.methods.paginate){
                             frag.appendChild(deebo.methods.createPaginator())
                         } else {
-                            frag.appendChild(deebo.methods.createGridFooter())
+                            if(!deebo.methods.hideFooter)
+                                frag.appendChild(deebo.methods.createGridFooter())
                         }
                         frag.appendChild(deebo.methods.createInsightsCont())
                         if(dataTableService.methods.serverSideTotal === 0)
@@ -2769,11 +2782,13 @@ deebo.methods = function() {
                 if(window.innerWidth >= deebo.methods.mouseEventBreak && !deebo.methods.tblFooterListenersAdded){
                     try{
                         const tfoot = document.getElementById("tableFooter")
-                        tfoot.addEventListener("mousemove", tblDragEvents.methods.checkPaginatorBorderCursor)
-                        tfoot.addEventListener("mousemove", tblDragEvents.methods.handleTableHeightAdjust)
-                        tfoot.addEventListener("mousedown", tblDragEvents.methods.handleTableHeightAdjust)
-                        tfoot.addEventListener("mouseup", tblDragEvents.methods.handleColResMouseUp)
-                        deebo.methods.unbindMouseRemoveEvts(tfoot.firstElementChild)
+                        if(tfoot){
+                            tfoot.addEventListener("mousemove", tblDragEvents.methods.checkPaginatorBorderCursor)
+                            tfoot.addEventListener("mousemove", tblDragEvents.methods.handleTableHeightAdjust)
+                            tfoot.addEventListener("mousedown", tblDragEvents.methods.handleTableHeightAdjust)
+                            tfoot.addEventListener("mouseup", tblDragEvents.methods.handleColResMouseUp)
+                            deebo.methods.unbindMouseRemoveEvts(tfoot.firstElementChild)
+                        }
                         const tRows = document.getElementById("totalRows")
                         let i = 0
                         const pels = document.getElementsByClassName("paginator-half-wid")
@@ -2789,7 +2804,8 @@ deebo.methods = function() {
                                 deebo.methods.unbindMouseRemoveEvts(pk)
                             }
                         }
-                        tblDragEvents.methods.insertBottomMessage(tRows)
+                        if(tRows)
+                            tblDragEvents.methods.insertBottomMessage(tRows)
                         deebo.methods.tblFooterListenersAdded = true
                     }catch(e){}
                 }
@@ -3526,6 +3542,20 @@ deebo.methods = function() {
                 return deebo.methods.titleCase(column);
             },
 
+            canColumnSort: function(prop) {
+                const def = dataTableService.methods.initColumnDef.find( function(c) { return c.column === prop })
+                if(def && def.sortable === false)
+                    return false
+                return true;
+            },
+
+            hideSingleColumnFilter: function(prop) {
+                const def = dataTableService.methods.initColumnDef.find( function(c) { return c.column === prop })
+                if(def && def.hideFilter === true)
+                    return true
+                return false;
+            },
+
             insertColumnHeader: function(col, head, allowFreeze, okEnt) {
                 try{
                     const div = document.createElement("div")
@@ -3541,6 +3571,8 @@ deebo.methods = function() {
                     const prettyCol = deebo.methods.figureColumnTitle(col)
                     col = deebo.methods.stripSpecChars(col)
                     const useCol = col.replace(/ /g, deebo.methods.uniSep)
+                    const canSort = deebo.methods.canColumnSort(col)
+                    const hideSingleColFil = deebo.methods.hideSingleColumnFilter(col);
                     div.id = "columnHeader" + useCol
                     name.textContent = prettyCol
                     name.id = "header" + useCol
@@ -3549,11 +3581,15 @@ deebo.methods = function() {
                     arr.className = "data-sort-arr"
                     iArr.className = "material-icons"
                     iArr.textContent = "arrow_upward"
-                    name.onclick = deebo.methods.doSortOnClick
-                    arr.appendChild(iArr)
-                    arr.onmousedown = deebo.methods.preventTabScroll
-                    arr.onclick = deebo.methods.doSortOnClick
-                    arr.onfocus = deebo.methods.checkTabHorizScroll
+                    if(canSort){
+                        name.onclick = deebo.methods.doSortOnClick
+                        arr.appendChild(iArr)
+                        arr.onmousedown = deebo.methods.preventTabScroll
+                        arr.onclick = deebo.methods.doSortOnClick
+                        arr.onfocus = deebo.methods.checkTabHorizScroll
+                    } else {
+                        name.style.cursor = "text"
+                    }
                     min.type = "button"
                     min.id = "btnMin" + useCol
                     min.className = "btn-min-col"
@@ -3568,7 +3604,7 @@ deebo.methods = function() {
                     xfil.innerHTML = "&times;";
                     xfil.onclick = deebo.methods.resetColFilter
                     const inputType = deebo.methods.figureFilterType(col)
-                    if(!deebo.methods.hideColumnFilters){
+                    if(!deebo.methods.hideColumnFilters && !hideSingleColFil){
                         inp.type= inputType
                         inp.name = "filter" + useCol
                         inp.id = "filter" + useCol//dont chhange
@@ -3586,7 +3622,8 @@ deebo.methods = function() {
                         inp.addEventListener("focus", deebo.methods.killSelFilOpts)
                     }
                     div.appendChild(name)//keep first
-                    div.appendChild(arr)
+                    if(canSort)
+                        div.appendChild(arr)
                     if(okEnt)
                         div.appendChild(min)
                     if(allowFreeze && CSS && CSS.supports && CSS.supports("position", "sticky")){//give freeze pane ability
@@ -3604,9 +3641,9 @@ deebo.methods = function() {
                     }
                     div.appendChild(document.createElement("br"))
                     div.appendChild(xfil)
-                    if(inp && !deebo.methods.hideColumnFilters)
+                    if(inp && !deebo.methods.hideColumnFilters && !hideSingleColFil)
                         div.appendChild(inp)
-                    if(!deebo.methods.hideColumnFilters){
+                    if(!deebo.methods.hideColumnFilters && !hideSingleColFil){
                         div.appendChild(deebo.methods.insertSelectComparator(useCol, inputType))
                         div.appendChild(deebo.methods.insertSelectComparatorBtn())
                     }
@@ -3618,7 +3655,7 @@ deebo.methods = function() {
                         deebo.methods.unbindMouseRemoveEvts(name)
                         deebo.methods.unbindMouseRemoveEvts(arr)
                         deebo.methods.unbindMouseRemoveEvts(min)
-                        if(inp && !deebo.methods.hideColumnFilters)
+                        if(inp && !deebo.methods.hideColumnFilters && !hideSingleColFil)
                             deebo.methods.unbindMouseRemoveEvts(inp)
                         deebo.methods.unbindMouseRemoveEvts(xfil)
                     }
@@ -8062,7 +8099,12 @@ dataTableService.methods = function() {
             },
 
             setTblVertBounds: function() {
-                dataTableService.methods.tblBot = (document.getElementById("tableFooter")?.getBoundingClientRect().top || 0)
+                const foot = document.getElementById("tableFooter")
+                if(foot){
+                    dataTableService.methods.tblBot = foot.getBoundingClientRect().top;
+                } else {
+                    dataTableService.methods.tblBot = (document.getElementById("dataTableBody")?.getBoundingClientRect().bottom || 0)
+                }
                 dataTableService.methods.tblTop = (document.getElementsByClassName("data-table-headers")[0]?.getBoundingClientRect().bottom || 0)
             },
 
