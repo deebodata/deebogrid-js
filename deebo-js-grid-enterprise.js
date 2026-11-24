@@ -3614,6 +3614,8 @@ deebo.methods = function() {
                             if(inputType === "text")
                                 inp.maxLength = 255
                         }
+                        if(inputType === "number")
+                            inp.onchange = deebo.methods.filterOnKeyUp
                         if(inputType === "date"){
                             inp.oninput = deebo.methods.filterOnKeyUp
                             inp.onchange = deebo.methods.filterOnKeyUp
